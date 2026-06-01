@@ -1,0 +1,430 @@
+import React, { createContext, useContext, useState, useEffect, ReactNode, PropsWithChildren } from 'react';
+import { User, Product, Table, Order, CommissionLog, OrderItem } from '../types';
+import { INITIAL_USERS, INITIAL_PRODUCTS, INITIAL_TABLES } from '../constants';
+
+interface AppContextData {
+  currentUser: User | null;
+  login: (pin: string) => boolean;
+  logout: () => void;
+  users: User[];
+  products: Product[];
+  tables: Table[];
+  orders: Order[];
+  commissionLogs: CommissionLog[];
+  isRegisterOpen: boolean;
+  registerBalance: number;
+  
+  // Actions
+  openRegister: (amount: number) => void;
+  closeRegister: () => void;
+  addProduct: (product: Product) => void;
+  updateProduct: (product: Product) => void;
+  removeProduct: (productId: string) => void;
+  openTable: (tableId: string, waiterId: string, clientName?: string) => void;
+  cancelOrder: (tableId: string) => void; // Reset Table
+  updateTableName: (tableId: string, newName: string) => void;
+  addToOrder: (tableId: string, product: Product, quantity: number) => void;
+  removeFromOrder: (tableId: string, productId: string, removeAll?: boolean) => void;
+  closeAccount: (tableId: string, paymentMethod: any, includeServiceFee: boolean) => void;
+  payCommission: (logId: string) => void;
+  processDirectSale: (items: {product: Product, quantity: number, total: number}[], paymentMethod: string) => void;
+  deleteOrder: (orderId: string, pin: string) => boolean;
+  
+  // User Management
+  addUser: (user: User) => void;
+  updateUser: (user: User) => void;
+  removeUser: (userId: string) => void;
+}
+
+const AppContext = createContext<AppContextData | undefined>(undefined);
+
+export const AppProvider = ({ children }: PropsWithChildren) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [registerBalance, setRegisterBalance] = useState(0);
+  
+  // "Database" States
+  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [tables, setTables] = useState<Table[]>(INITIAL_TABLES);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [commissionLogs, setCommissionLogs] = useState<CommissionLog[]>([]);
+
+  // Load from LocalStorage
+  useEffect(() => {
+    const savedData = localStorage.getItem('pier_pdv_data');
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        
+        let isExpired = false;
+        if (parsed.lastSavedAt) {
+            const lastSaved = new Date(parsed.lastSavedAt);
+            const now = new Date();
+            // If the last save was before 8:00 AM today, and it's now past 8:00 AM today, it's a new shift.
+            // Or if the last save was a different day altogether and it's past 8 AM.
+            
+            // Normalize to shift days (a shift day starts at 8:00 AM)
+            const getShiftDay = (date: Date) => {
+                const h = date.getHours();
+                const shiftDate = new Date(date);
+                if (h < 8) {
+                    shiftDate.setDate(shiftDate.getDate() - 1);
+                }
+                shiftDate.setHours(0, 0, 0, 0);
+                return shiftDate.getTime();
+            };
+
+            if (getShiftDay(now) > getShiftDay(lastSaved)) {
+                isExpired = true;
+            }
+        }
+
+        if (parsed.users) setUsers(parsed.users);
+        if (parsed.products) setProducts(parsed.products);
+        if (parsed.tables) setTables(parsed.tables);
+        if (parsed.commissionLogs) setCommissionLogs(parsed.commissionLogs.map((l: any) => ({...l, date: new Date(l.date)})));
+        if (parsed.orders) setOrders(parsed.orders.map((o: any) => ({
+            ...o,
+            openedAt: new Date(o.openedAt),
+            closedAt: o.closedAt ? new Date(o.closedAt) : undefined
+        })));
+
+        if (!isExpired) {
+            if (parsed.currentUser) setCurrentUser(parsed.currentUser);
+            if (parsed.isRegisterOpen !== undefined) setIsRegisterOpen(parsed.isRegisterOpen);
+            if (parsed.registerBalance) setRegisterBalance(parsed.registerBalance);
+        } else {
+            // Force reset of register and login if new shift
+            setIsRegisterOpen(false);
+            setRegisterBalance(0);
+            setCurrentUser(null);
+            // Optionally, we could archive orders, but for now we'll keep them in history
+        }
+
+      } catch (e) {
+        console.error("Failed to parse local storage", e);
+      }
+    }
+  }, []);
+
+  // Save to LocalStorage
+  useEffect(() => {
+    localStorage.setItem('pier_pdv_data', JSON.stringify({
+      currentUser,
+      isRegisterOpen,
+      registerBalance,
+      users,
+      products,
+      tables,
+      orders,
+      commissionLogs,
+      lastSavedAt: new Date().toISOString()
+    }));
+  }, [currentUser, isRegisterOpen, registerBalance, users, products, tables, orders, commissionLogs]);
+
+  const login = (pin: string) => {
+    const user = users.find(u => u.pin === pin);
+    if (user) {
+      setCurrentUser(user);
+      return true;
+    }
+    return false;
+  };
+
+  const logout = () => setCurrentUser(null);
+
+  const openRegister = (amount: number) => {
+      setRegisterBalance(amount);
+      setIsRegisterOpen(true);
+  };
+
+  const closeRegister = () => {
+      setIsRegisterOpen(false);
+      setRegisterBalance(0);
+  };
+
+  // User Management
+  const addUser = (user: User) => {
+      setUsers(prev => [...prev, user]);
+  };
+  
+  const updateUser = (updatedUser: User) => {
+      setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+  };
+  
+  const removeUser = (userId: string) => {
+      setUsers(prev => prev.filter(u => u.id !== userId));
+  };
+
+  // Product Management
+  const addProduct = (product: Product) => {
+    setProducts(prev => [...prev, product]);
+  };
+
+  const updateProduct = (updatedProduct: Product) => {
+    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+  };
+
+  const removeProduct = (productId: string) => {
+    setProducts(prev => prev.filter(p => p.id !== productId));
+  };
+
+  const openTable = (tableId: string, waiterId: string, clientName?: string) => {
+    if (!isRegisterOpen && currentUser?.role !== 'ADMIN') {
+        return;
+    }
+
+    const newOrder: Order = {
+      id: `ord-${Date.now()}`,
+      tableId,
+      waiterId,
+      status: 'OPEN',
+      items: [],
+      subtotal: 0,
+      serviceFee: 0,
+      discount: 0,
+      total: 0,
+      openedAt: new Date(),
+    };
+
+    setOrders(prev => [...prev, newOrder]);
+    setTables(prev => prev.map(t => 
+      t.id === tableId ? { 
+          ...t, 
+          status: 'OCCUPIED', 
+          currentOrderId: newOrder.id, 
+          waiterId,
+          customName: clientName || t.customName 
+      } : t
+    ));
+  };
+
+  const cancelOrder = (tableId: string) => {
+    const table = tables.find(t => t.id === tableId);
+    if (!table) return;
+
+    // Set order to cancelled if it exists
+    if (table.currentOrderId) {
+        setOrders(prev => prev.map(o => o.id === table.currentOrderId ? { ...o, status: 'CANCELLED', closedAt: new Date() } : o));
+    }
+    
+    // Free table completely (Force reset)
+    setTables(prev => prev.map(t => t.id === tableId ? { 
+        ...t, 
+        status: 'AVAILABLE', 
+        currentOrderId: undefined, 
+        waiterId: undefined, 
+        customName: undefined 
+    } : t));
+  };
+
+  const updateTableName = (tableId: string, newName: string) => {
+      setTables(prev => prev.map(t => t.id === tableId ? { ...t, customName: newName } : t));
+  };
+
+  const addToOrder = (tableId: string, product: Product, quantity: number) => {
+    const table = tables.find(t => t.id === tableId);
+    if (!table || !table.currentOrderId) return;
+
+    setOrders(prev => prev.map(order => {
+      if (order.id !== table.currentOrderId) return order;
+
+      const existingItem = order.items.find(i => i.productId === product.id);
+      let newItems;
+      if (existingItem) {
+        newItems = order.items.map(i => 
+          i.productId === product.id 
+            ? { ...i, quantity: i.quantity + quantity, total: (i.quantity + quantity) * i.price } 
+            : i
+        );
+      } else {
+        newItems = [...order.items, {
+          productId: product.id,
+          productName: product.name,
+          quantity,
+          price: product.price,
+          total: product.price * quantity
+        }];
+      }
+
+      const subtotal = newItems.reduce((acc, item) => acc + item.total, 0);
+      const serviceFee = subtotal * 0.10;
+      
+      return {
+        ...order,
+        items: newItems,
+        subtotal,
+        serviceFee,
+        total: subtotal + serviceFee - order.discount
+      };
+    }));
+  };
+
+  const removeFromOrder = (tableId: string, productId: string, removeAll: boolean = false) => {
+      const table = tables.find(t => t.id === tableId);
+      if (!table || !table.currentOrderId) return;
+
+      setOrders(prev => prev.map(order => {
+          if (order.id !== table.currentOrderId) return order;
+
+          const existingItem = order.items.find(i => i.productId === productId);
+          if (!existingItem) return order;
+
+          let newItems;
+          if (existingItem.quantity > 1 && !removeAll) {
+              // Decrease quantity
+              newItems = order.items.map(i => 
+                  i.productId === productId 
+                  ? { ...i, quantity: i.quantity - 1, total: (i.quantity - 1) * i.price }
+                  : i
+              );
+          } else {
+              // Remove item
+              newItems = order.items.filter(i => i.productId !== productId);
+          }
+
+          const subtotal = newItems.reduce((acc, item) => acc + item.total, 0);
+          const serviceFee = subtotal * 0.10;
+
+          return {
+              ...order,
+              items: newItems,
+              subtotal,
+              serviceFee,
+              total: subtotal + serviceFee - order.discount
+          };
+      }));
+  };
+
+  const closeAccount = (tableId: string, paymentMethod: any, includeServiceFee: boolean) => {
+    const table = tables.find(t => t.id === tableId);
+    if (!table || !table.currentOrderId) return;
+
+    const currentOrder = orders.find(o => o.id === table.currentOrderId);
+    if (!currentOrder) return;
+
+    // Finalize amounts
+    const finalServiceFee = includeServiceFee ? currentOrder.subtotal * 0.10 : 0;
+    const finalTotal = currentOrder.subtotal + finalServiceFee - currentOrder.discount;
+
+    // Update Order
+    setOrders(prev => prev.map(o => 
+      o.id === currentOrder.id 
+        ? { ...o, status: 'CLOSED', closedAt: new Date(), serviceFee: finalServiceFee, total: finalTotal, paymentMethod } 
+        : o
+    ));
+
+    // Update Table
+    setTables(prev => prev.map(t => 
+      t.id === tableId ? { ...t, status: 'AVAILABLE', currentOrderId: undefined, waiterId: undefined, customName: undefined } : t
+    ));
+
+    // Deduct Stock
+    setProducts(prevProducts => prevProducts.map(p => {
+        const orderItem = currentOrder.items.find(i => i.productId === p.id);
+        if (orderItem) {
+            return { ...p, stock: Math.max(0, p.stock - orderItem.quantity) };
+        }
+        return p;
+    }));
+
+    // Process Commission if fee included
+    if (includeServiceFee && finalServiceFee > 0) {
+      const commissionLog: CommissionLog = {
+        id: `com-${Date.now()}`,
+        waiterId: currentOrder.waiterId,
+        orderId: currentOrder.id,
+        amount: finalServiceFee,
+        date: new Date(),
+        status: 'PAID'
+      };
+      setCommissionLogs(prev => [...prev, commissionLog]);
+      
+      setUsers(prev => prev.map(u => 
+        u.id === currentOrder.waiterId 
+          ? { ...u, commissionBalance: u.commissionBalance + finalServiceFee } 
+          : u
+      ));
+    }
+  };
+
+  const payCommission = (logId: string) => {
+    const log = commissionLogs.find(l => l.id === logId);
+    if (!log || log.status === 'PAID') return;
+
+    setCommissionLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'PAID' } : l));
+  };
+
+  const processDirectSale = (items: {product: Product, quantity: number, total: number}[], paymentMethod: string) => {
+    const subtotal = items.reduce((acc, item) => acc + item.total, 0);
+    const orderItems: OrderItem[] = items.map(i => ({
+      productId: i.product.id,
+      productName: i.product.name,
+      quantity: i.quantity,
+      price: i.product.price,
+      total: i.total
+    }));
+
+    const newOrder: Order = {
+      id: `dir-${Date.now()}`,
+      tableId: 'fast-sale', // Special ID or fallback
+      waiterId: currentUser?.id || '',
+      status: 'CLOSED',
+      items: orderItems,
+      subtotal,
+      serviceFee: 0,
+      discount: 0,
+      total: subtotal,
+      openedAt: new Date(),
+      closedAt: new Date(),
+      paymentMethod
+    };
+
+    setOrders(prev => [...prev, newOrder]);
+
+    // Deduct stock
+    setProducts(prevProducts => prevProducts.map(p => {
+        const orderItem = orderItems.find(i => i.productId === p.id);
+        if (orderItem) {
+            return { ...p, stock: Math.max(0, p.stock - orderItem.quantity) };
+        }
+        return p;
+    }));
+  };
+
+  const deleteOrder = (orderId: string, pin: string) => {
+    if (pin === '0508') {
+      const order = orders.find(o => o.id === orderId);
+      if (order && order.status === 'CLOSED') {
+        // Revert stock
+        setProducts(prevProducts => prevProducts.map(p => {
+            const orderItem = order.items.find(i => i.productId === p.id);
+            if (orderItem) {
+                return { ...p, stock: p.stock + orderItem.quantity };
+            }
+            return p;
+        }));
+      }
+      setOrders(prev => prev.filter(o => o.id !== orderId));
+      return true;
+    }
+    return false;
+  };
+
+  return (
+    <AppContext.Provider value={{
+      currentUser, login, logout, users, products, tables, orders, commissionLogs, isRegisterOpen, registerBalance,
+      openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, addToOrder, removeFromOrder, closeAccount, payCommission, processDirectSale, deleteOrder,
+      addUser, updateUser, removeUser
+    }}>
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (!context) throw new Error("useApp must be used within AppProvider");
+  return context;
+};
