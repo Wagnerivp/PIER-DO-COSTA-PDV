@@ -25,6 +25,7 @@ interface AppContextData {
   openTable: (tableId: string, waiterId: string, clientName?: string) => void;
   cancelOrder: (tableId: string) => void; // Reset Table
   updateTableName: (tableId: string, newName: string) => void;
+  requestCheckout: (tableId: string) => void;
   addToOrder: (tableId: string, product: Product, quantity: number) => void;
   removeFromOrder: (tableId: string, productId: string, removeAll?: boolean) => void;
   closeAccount: (tableId: string, paymentMethod: any, includeServiceFee: boolean) => void;
@@ -250,6 +251,10 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       setTables(prev => prev.map(t => t.id === tableId ? { ...t, customName: newName } : t));
   };
 
+  const requestCheckout = (tableId: string) => {
+      setTables(prev => prev.map(t => t.id === tableId ? { ...t, status: 'PAYMENT_PENDING' } : t));
+  };
+
   const addToOrder = (tableId: string, product: Product, quantity: number) => {
     const table = tables.find(t => t.id === tableId);
     if (!table || !table.currentOrderId) return;
@@ -451,7 +456,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   return (
     <AppContext.Provider value={{
       currentUser, login, logout, users, products, tables, orders, commissionLogs, expenses, isRegisterOpen, registerBalance,
-      openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, addToOrder, removeFromOrder, closeAccount, payCommission, processDirectSale, deleteOrder,
+      openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payCommission, processDirectSale, deleteOrder,
       addUser, updateUser, removeUser, addExpense, removeExpense
     }}>
       {children}

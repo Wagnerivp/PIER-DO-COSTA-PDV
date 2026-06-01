@@ -9,7 +9,7 @@ interface Props {
 }
 
 export const OrderView = ({ tableId, onBack }: Props) => {
-  const { tables, orders, products, addToOrder, removeFromOrder, closeAccount, updateTableName, cancelOrder, currentUser } = useApp();
+  const { tables, orders, products, addToOrder, removeFromOrder, closeAccount, updateTableName, cancelOrder, requestCheckout, currentUser } = useApp();
   const [selectedCategory, setSelectedCategory] = useState('c-all');
   const [searchTerm, setSearchTerm] = useState('');
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -193,11 +193,15 @@ export const OrderView = ({ tableId, onBack }: Props) => {
             {filteredProducts.map(product => (
                 <button 
                     key={product.id}
-                    onClick={() => addToOrder(tableId, product, 1)}
-                    className="glass-card p-3 rounded-xl flex flex-col justify-between gap-2 text-left group hover:border-pier-neon hover:bg-white/5 active:scale-95 transition-all h-28 relative overflow-hidden"
+                    onClick={() => {
+                        if (table.status !== 'PAYMENT_PENDING') {
+                            addToOrder(tableId, product, 1);
+                        }
+                    }}
+                    className={`glass-card p-3 rounded-xl flex flex-col justify-between gap-2 text-left group transition-all h-28 relative overflow-hidden ${table.status !== 'PAYMENT_PENDING' ? 'hover:border-pier-neon hover:bg-white/5 active:scale-95' : 'opacity-70 cursor-not-allowed'}`}
                 >
                     <div className="absolute top-0 right-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <div className="bg-pier-neon text-pier-900 rounded-full p-1"><PlusCircleIcon size={12} /></div>
+                         {table.status !== 'PAYMENT_PENDING' && <div className="bg-pier-neon text-pier-900 rounded-full p-1"><PlusCircleIcon size={12} /></div>}
                     </div>
                     <span className="font-bold text-white text-sm line-clamp-2 leading-tight group-hover:text-pier-neon z-10">{product.name}</span>
                     <div className="z-10 mt-auto">
@@ -240,15 +244,21 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                 </div>
                 
                 <div className="flex flex-col items-end gap-2">
-                    <span className="text-[10px] font-bold text-pier-neon bg-pier-neon/10 border border-pier-neon/30 px-2 py-0.5 rounded-full uppercase tracking-wide">Em Aberto</span>
-                    <button 
-                        type="button"
-                        onClick={handleResetTable} 
-                        className="text-[10px] font-bold text-red-400 hover:text-white flex items-center gap-1 border border-red-500/30 px-2 py-1 rounded bg-red-500/5 hover:bg-red-500 transition-colors cursor-pointer z-50"
-                        title="Cancelar pedido e liberar mesa"
-                    >
-                        <Trash2 size={10} /> REINICIAR
-                    </button>
+                    {table.status === 'PAYMENT_PENDING' ? (
+                        <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full uppercase tracking-wide">Pagar</span>
+                    ) : (
+                        <span className="text-[10px] font-bold text-pier-neon bg-pier-neon/10 border border-pier-neon/30 px-2 py-0.5 rounded-full uppercase tracking-wide">Em Aberto</span>
+                    )}
+                    {currentUser?.role !== 'WAITER' && (
+                        <button 
+                            type="button"
+                            onClick={handleResetTable} 
+                            className="text-[10px] font-bold text-red-400 hover:text-white flex items-center gap-1 border border-red-500/30 px-2 py-1 rounded bg-red-500/5 hover:bg-red-500 transition-colors cursor-pointer z-50"
+                            title="Cancelar pedido e liberar mesa"
+                        >
+                            <Trash2 size={10} /> REINICIAR
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
@@ -272,20 +282,24 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                                 <span className="text-xs text-pier-neon font-mono">x{item.quantity}</span>
                             </div>
                             <div className="flex bg-white/5 rounded-lg border border-white/5 overflow-hidden">
-                                <button 
-                                    onClick={() => removeFromOrder(tableId, item.productId)}
-                                    className="w-8 h-8 flex items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white transition-colors border-r border-white/5"
-                                    title="Diminuir"
-                                >
-                                    <Minus size={14} />
-                                </button>
-                                <button 
-                                    onClick={() => setItemToRemove(item.productId)}
-                                    className="w-8 h-8 flex items-center justify-center text-red-500/70 hover:bg-red-500/20 hover:text-red-400 transition-colors"
-                                    title="Excluir item"
-                                >
-                                    <Trash2 size={14} />
-                                </button>
+                                {table.status !== 'PAYMENT_PENDING' && (
+                                    <>
+                                        <button 
+                                            onClick={() => removeFromOrder(tableId, item.productId)}
+                                            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white transition-colors border-r border-white/5"
+                                            title="Diminuir"
+                                        >
+                                            <Minus size={14} />
+                                        </button>
+                                        <button 
+                                            onClick={() => setItemToRemove(item.productId)}
+                                            className="w-8 h-8 flex items-center justify-center text-red-500/70 hover:bg-red-500/20 hover:text-red-400 transition-colors"
+                                            title="Excluir item"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -315,23 +329,38 @@ export const OrderView = ({ tableId, onBack }: Props) => {
             </div>
 
             <div className="flex gap-3">
-                <button
-                    onClick={handlePrintConference}
-                    className="p-4 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-                    title="Imprimir Conferência"
-                >
-                    <Printer size={20} />
-                </button>
-                <button 
-                    onClick={() => {
-                        setShowCashInput(false);
-                        setPaymentModalOpen(true);
-                    }}
-                    disabled={order.items.length === 0}
-                    className="flex-1 py-4 rounded-xl bg-gradient-to-r from-pier-neon to-pier-green text-pier-900 font-bold text-lg hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
-                >
-                    FECHAR CONTA
-                </button>
+                {(currentUser?.role === 'ADMIN' || currentUser?.role === 'CASHIER' || currentUser?.role === 'MANAGER') && (
+                    <button
+                        onClick={handlePrintConference}
+                        className="p-4 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                        title="Imprimir Conferência"
+                    >
+                        <Printer size={20} />
+                    </button>
+                )}
+                {currentUser?.role === 'WAITER' ? (
+                    <button 
+                        onClick={() => {
+                            requestCheckout(tableId);
+                            onBack();
+                        }}
+                        disabled={order.items.length === 0 || table.status === 'PAYMENT_PENDING'}
+                        className={`flex-1 py-4 rounded-xl font-bold text-lg text-white transition-all active:scale-[0.98] ${table.status === 'PAYMENT_PENDING' ? 'bg-amber-500/50 cursor-not-allowed' : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:shadow-[0_0_20px_rgba(245,158,11,0.4)]'}`}
+                    >
+                        {table.status === 'PAYMENT_PENDING' ? 'AGUARDANDO CAIXA' : 'ENVIAR P/ CAIXA'}
+                    </button>
+                ) : (
+                    <button 
+                        onClick={() => {
+                            setShowCashInput(false);
+                            setPaymentModalOpen(true);
+                        }}
+                        disabled={order.items.length === 0}
+                        className="flex-1 py-4 rounded-xl bg-gradient-to-r from-pier-neon to-pier-green text-pier-900 font-bold text-lg hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+                    >
+                        FECHAR CONTA
+                    </button>
+                )}
             </div>
         </div>
       </div>

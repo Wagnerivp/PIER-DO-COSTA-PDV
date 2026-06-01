@@ -87,12 +87,15 @@ export const Tables = () => {
             <p className="text-slate-400">Mapa de mesas em tempo real</p>
         </div>
         
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2 text-sm text-slate-300">
                 <span className="w-3 h-3 rounded-full bg-slate-600"></span> Livre
             </div>
             <div className="flex items-center gap-2 text-sm text-slate-300">
                 <span className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]"></span> Ocupada
+            </div>
+            <div className="flex items-center gap-2 text-sm text-slate-300">
+                <span className="w-3 h-3 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)] animate-pulse"></span> Pagar
             </div>
         </div>
       </div>
@@ -102,6 +105,7 @@ export const Tables = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-8">
             {tables.filter(t => t.id.startsWith('t')).map(table => {
                 const isOccupied = table.status === 'OCCUPIED';
+                const isPending = table.status === 'PAYMENT_PENDING';
                 const waiter = users.find(u => u.id === table.waiterId);
 
                 return (
@@ -109,14 +113,16 @@ export const Tables = () => {
                         key={table.id}
                         onClick={() => handleTableClick(table)}
                         className={`relative aspect-square rounded-2xl p-4 flex flex-col items-center justify-between border transition-all duration-300 group cursor-pointer select-none
-                            ${isOccupied 
+                            ${isPending
+                                ? 'bg-amber-500/10 border-amber-500/50 hover:bg-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                                : isOccupied 
                                 ? 'bg-red-500/10 border-red-500/50 hover:bg-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]' 
                                 : 'bg-slate-800/50 border-white/10 hover:bg-slate-700/50 hover:border-pier-neon/50'
                             }
                         `}
                     >
                         {/* Delete Button for Occupied Tables */}
-                        {isOccupied && (
+                        {(isOccupied || isPending) && currentUser?.role !== 'WAITER' && (
                             <button
                                 type="button"
                                 onClick={(e) => handleResetTable(e, table.id)}
@@ -128,14 +134,18 @@ export const Tables = () => {
                         )}
 
                         <div className="w-full flex justify-between items-start pointer-events-none">
-                            <span className={`text-lg font-bold ${isOccupied ? 'text-red-400' : 'text-slate-400'}`}>
+                            <span className={`text-lg font-bold ${isPending ? 'text-amber-400' : isOccupied ? 'text-red-400' : 'text-slate-400'}`}>
                                 {table.number}
                             </span>
                             {/* Only show alert circle if we aren't hovering over the trash can area generally, but z-index handles clicks */}
-                            {isOccupied && <AlertCircle size={16} className="text-red-400 animate-pulse opacity-50" />}
+                            {isPending ? (
+                                <AlertCircle size={16} className="text-amber-400 animate-pulse" />
+                            ) : isOccupied ? (
+                                <AlertCircle size={16} className="text-red-400 opacity-50" />
+                            ) : null}
                         </div>
                         
-                        <div className={`p-4 rounded-full pointer-events-none ${isOccupied ? 'bg-red-500/20 text-red-400' : 'bg-slate-700/50 text-slate-500 group-hover:text-pier-neon transition-colors'}`}>
+                        <div className={`p-4 rounded-full pointer-events-none ${isPending ? 'bg-amber-500/20 text-amber-400' : isOccupied ? 'bg-red-500/20 text-red-400' : 'bg-slate-700/50 text-slate-500 group-hover:text-pier-neon transition-colors'}`}>
                             {table.customName ? (
                                 <span className="font-bold text-lg px-2 break-all line-clamp-2">{table.customName}</span>
                             ) : (
@@ -144,8 +154,8 @@ export const Tables = () => {
                         </div>
 
                         <div className="w-full text-center pointer-events-none">
-                            {isOccupied ? (
-                                <p className="text-xs text-red-300 font-medium truncate">{waiter?.name.split(' ')[0]}</p>
+                            {isPending || isOccupied ? (
+                                <p className={`text-xs font-medium truncate ${isPending ? 'text-amber-300' : 'text-red-300'}`}>{waiter?.name.split(' ')[0]}</p>
                             ) : (
                                 <p className="text-xs text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">Abrir</p>
                             )}
