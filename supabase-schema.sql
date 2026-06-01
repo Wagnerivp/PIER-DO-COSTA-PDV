@@ -110,9 +110,18 @@ CREATE POLICY "Permitir leitura/escrita anonima para testes" ON public.orders FO
 CREATE POLICY "Permitir leitura/escrita anonima para testes" ON public.order_items FOR ALL USING (true);
 CREATE POLICY "Permitir leitura/escrita anonima para testes" ON public.commission_logs FOR ALL USING (true);
 
--- ==========================================
--- 3. Mock de Dados Iniciais
--- ==========================================
+-- Tabela de Despesas
+CREATE TABLE public.expenses (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  description text NOT NULL,
+  amount numeric(10,2) NOT NULL,
+  category text NOT NULL CHECK (category IN ('MAINTENANCE', 'CLEANING', 'SALARY', 'SUPPLIES', 'OTHER')),
+  date timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Permitir leitura/escrita anonima para testes" ON public.expenses FOR ALL USING (true);
+
 
 -- Cria usuário ADMIN padrão (PIN: 1234)
 INSERT INTO public.users (name, role, pin) VALUES ('Administrador', 'ADMIN', '1234');

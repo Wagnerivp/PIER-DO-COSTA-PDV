@@ -71,10 +71,10 @@ export const Products = () => {
 
   const handleEdit = (product: Product) => {
       setEditingId(product.id);
-      setName(product.name);
-      setPrice(product.price.toString());
-      setCost(product.cost.toString());
-      setStock(product.stock.toString());
+      setName(product.name || '');
+      setPrice(product.price?.toString() || '0');
+      setCost(product.cost?.toString() || '0');
+      setStock(product.stock?.toString() || '0');
       setCategory(product.categoryId);
       // Switch to form view on mobile so user can see what they are editing
       setActiveTab('form');

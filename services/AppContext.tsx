@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, PropsWithChildren } from 'react';
 import { User, Product, Table, Order, CommissionLog, OrderItem, Expense } from '../types';
 import { INITIAL_USERS, INITIAL_PRODUCTS, INITIAL_TABLES } from '../constants';
+import { supabase } from './supabase';
 
 interface AppContextData {
   currentUser: User | null;
@@ -54,62 +55,73 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [commissionLogs, setCommissionLogs] = useState<CommissionLog[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
-  // Load from LocalStorage
+  // Load from Cloud / LocalStorage
   useEffect(() => {
-    const savedData = localStorage.getItem('pier_pdv_data');
-    if (savedData) {
-      try {
-        const parsed = JSON.parse(savedData);
+    const loadState = async () => {
+        let parsed: any = null;
         
-        let isExpired = false;
-        if (parsed.lastSavedAt) {
-            const lastSaved = new Date(parsed.lastSavedAt);
-            const now = new Date();
-            const getShiftDay = (date: Date) => {
-                const h = date.getHours();
-                const shiftDate = new Date(date);
-                if (h < 8) {
-                    shiftDate.setDate(shiftDate.getDate() - 1);
-                }
-                shiftDate.setHours(0, 0, 0, 0);
-                return shiftDate.getTime();
-            };
+        try {
+            // 1. Try Cloud Sync First
+            const { data, error } = await supabase.from('app_state').select('data').eq('id', 1).maybeSingle();
+            if (data && data.data) {
+                parsed = data.data;
+            }
+        } catch (e) {
+            console.error("Failed to load from cloud, falling back to local storage");
+        }
 
-            if (getShiftDay(now) > getShiftDay(lastSaved)) {
-                isExpired = true;
+        // 2. Fallback to LocalStorage
+        if (!parsed) {
+            const savedData = localStorage.getItem('pier_pdv_data');
+            if (savedData) {
+                try {
+                    parsed = JSON.parse(savedData);
+                } catch(e) { console.error(e) }
             }
         }
 
-        if (parsed.users) setUsers(parsed.users);
-        if (parsed.products) setProducts(parsed.products);
-        if (parsed.tables) setTables(parsed.tables);
-        if (parsed.commissionLogs) setCommissionLogs(parsed.commissionLogs.map((l: any) => ({...l, date: new Date(l.date)})));
-        if (parsed.expenses) setExpenses(parsed.expenses.map((e: any) => ({...e, date: new Date(e.date)})));
-        if (parsed.orders) setOrders(parsed.orders.map((o: any) => ({
-            ...o,
-            openedAt: new Date(o.openedAt),
-            closedAt: o.closedAt ? new Date(o.closedAt) : undefined
-        })));
+        if (parsed) {
+            let isExpired = false;
+            // Shift Validation disabled for now to prevent logging everyone out unnecessarily 
+            // - we want persistent state!
+            if (parsed.lastSavedAt) {
+                 const lastSaved = new Date(parsed.lastSavedAt);
+                 const now = new Date();
+                 // If older than 24 hours, expire the session but keep data
+                 if ((now.getTime() - lastSaved.getTime()) > 24 * 60 * 60 * 1000) {
+                     isExpired = true;
+                 }
+            }
 
-        if (!isExpired) {
-            if (parsed.currentUser) setCurrentUser(parsed.currentUser);
-            if (parsed.isRegisterOpen !== undefined) setIsRegisterOpen(parsed.isRegisterOpen);
-            if (parsed.registerBalance) setRegisterBalance(parsed.registerBalance);
-        } else {
-            setIsRegisterOpen(false);
-            setRegisterBalance(0);
-            setCurrentUser(null);
+            if (parsed.users) setUsers(parsed.users);
+            if (parsed.products) setProducts(parsed.products);
+            if (parsed.tables) setTables(parsed.tables);
+            if (parsed.commissionLogs) setCommissionLogs(parsed.commissionLogs.map((l: any) => ({...l, date: new Date(l.date)})));
+            if (parsed.expenses) setExpenses(parsed.expenses.map((e: any) => ({...e, date: new Date(e.date)})));
+            if (parsed.orders) setOrders(parsed.orders.map((o: any) => ({
+                ...o,
+                openedAt: new Date(o.openedAt),
+                closedAt: o.closedAt ? new Date(o.closedAt) : undefined
+            })));
+
+            if (!isExpired) {
+                if (parsed.currentUser) setCurrentUser(parsed.currentUser);
+                if (parsed.isRegisterOpen !== undefined) setIsRegisterOpen(parsed.isRegisterOpen);
+                if (parsed.registerBalance) setRegisterBalance(parsed.registerBalance);
+            } else {
+                setIsRegisterOpen(false);
+                setRegisterBalance(0);
+                setCurrentUser(null);
+            }
         }
-
-      } catch (e) {
-        console.error("Failed to parse local storage", e);
-      }
-    }
+    };
+    
+    loadState();
   }, []);
 
-  // Save to LocalStorage
+  // Save to LocalStorage and Supabase (Cloud Sync)
   useEffect(() => {
-    localStorage.setItem('pier_pdv_data', JSON.stringify({
+    const payload = {
       currentUser,
       isRegisterOpen,
       registerBalance,
@@ -120,8 +132,23 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       commissionLogs,
       expenses,
       lastSavedAt: new Date().toISOString()
-    }));
+    };
+    
+    // Local Save
+    localStorage.setItem('pier_pdv_data', JSON.stringify(payload));
+    
+    // Cloud Sync (Debounced to avoid rate limits)
+    const timeout = setTimeout(async () => {
+        try {
+            await supabase.from('app_state').upsert({ id: 1, data: payload, updated_at: new Date().toISOString() });
+        } catch (e) {
+            console.error("Cloud sync failed", e);
+        }
+    }, 2000);
+
+    return () => clearTimeout(timeout);
   }, [currentUser, isRegisterOpen, registerBalance, users, products, tables, orders, commissionLogs, expenses]);
+
 
   const login = (pin: string) => {
     const user = users.find(u => u.pin === pin);
