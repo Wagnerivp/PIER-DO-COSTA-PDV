@@ -95,7 +95,15 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
             }
 
             if (parsed.users) {
-                setUsers(parsed.users);
+                // Sincroniza nomes padrao
+                const updatedUsers = parsed.users.map((u: User) => {
+                    const defaultUser = INITIAL_USERS.find(du => du.id === u.id);
+                    if (defaultUser && (u.id === 'u1' || u.id === 'u2' || u.id === 'u3')) {
+                        return { ...u, name: defaultUser.name, role: defaultUser.role };
+                    }
+                    return u;
+                });
+                setUsers(updatedUsers);
             }
             if (parsed.products) setProducts(parsed.products);
             if (parsed.tables) setTables(parsed.tables);
