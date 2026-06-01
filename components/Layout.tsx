@@ -12,7 +12,7 @@ export const Layout = ({ children }: PropsWithChildren) => {
   return (
     <div className="flex flex-col-reverse lg:flex-row h-screen w-full overflow-hidden print:h-auto print:overflow-visible print:block">
       {/* Sidebar */}
-      <aside className="w-full lg:w-64 flex-shrink-0 glass-panel flex lg:flex-col z-20 print:hidden overflow-x-auto lg:overflow-visible no-scrollbar border-t border-white/10 lg:border-t-0 lg:border-r pb-safe lg:pb-0">
+      <aside className="w-full lg:w-64 flex-shrink-0 glass-panel flex lg:flex-col z-20 print:hidden overflow-x-auto lg:overflow-visible no-scrollbar border-t border-white/10 lg:border-t-0 lg:border-r pb-safe lg:pb-0-safe">
         <div className="h-20 lg:flex items-center justify-center border-b border-white/10 hidden">
           <h1 className="text-2xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-pier-neon to-pier-green">
             PIER

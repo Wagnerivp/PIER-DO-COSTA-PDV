@@ -70,6 +70,14 @@
       ::-webkit-scrollbar-thumb:hover {
         background: rgba(34, 211, 238, 0.4); 
       }
+      .pb-safe {
+        padding-bottom: max(env(safe-area-inset-bottom), 1.5rem);
+      }
+      @media (min-width: 1024px) {
+        .lg\:pb-0-safe {
+          padding-bottom: 0 !important;
+        }
+      }
     </style>
   <script type="importmap">
 {
