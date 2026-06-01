@@ -67,3 +67,13 @@ export interface CommissionLog {
   date: Date;
   status: 'PENDING' | 'PAID';
 }
+
+export type ExpenseCategory = 'MAINTENANCE' | 'CLEANING' | 'SALARY' | 'SUPPLIES' | 'OTHER';
+
+export interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  category: ExpenseCategory;
+  date: Date;
+}

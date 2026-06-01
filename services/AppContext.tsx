@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, PropsWithChildren } from 'react';
-import { User, Product, Table, Order, CommissionLog, OrderItem } from '../types';
+import { User, Product, Table, Order, CommissionLog, OrderItem, Expense } from '../types';
 import { INITIAL_USERS, INITIAL_PRODUCTS, INITIAL_TABLES } from '../constants';
 
 interface AppContextData {
@@ -11,6 +11,7 @@ interface AppContextData {
   tables: Table[];
   orders: Order[];
   commissionLogs: CommissionLog[];
+  expenses: Expense[];
   isRegisterOpen: boolean;
   registerBalance: number;
   
@@ -29,6 +30,8 @@ interface AppContextData {
   payCommission: (logId: string) => void;
   processDirectSale: (items: {product: Product, quantity: number, total: number}[], paymentMethod: string) => void;
   deleteOrder: (orderId: string, pin: string) => boolean;
+  addExpense: (expense: Expense) => void;
+  removeExpense: (expenseId: string) => void;
   
   // User Management
   addUser: (user: User) => void;
@@ -49,6 +52,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [tables, setTables] = useState<Table[]>(INITIAL_TABLES);
   const [orders, setOrders] = useState<Order[]>([]);
   const [commissionLogs, setCommissionLogs] = useState<CommissionLog[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
 
   // Load from LocalStorage
   useEffect(() => {
@@ -61,10 +65,6 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         if (parsed.lastSavedAt) {
             const lastSaved = new Date(parsed.lastSavedAt);
             const now = new Date();
-            // If the last save was before 8:00 AM today, and it's now past 8:00 AM today, it's a new shift.
-            // Or if the last save was a different day altogether and it's past 8 AM.
-            
-            // Normalize to shift days (a shift day starts at 8:00 AM)
             const getShiftDay = (date: Date) => {
                 const h = date.getHours();
                 const shiftDate = new Date(date);
@@ -84,6 +84,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         if (parsed.products) setProducts(parsed.products);
         if (parsed.tables) setTables(parsed.tables);
         if (parsed.commissionLogs) setCommissionLogs(parsed.commissionLogs.map((l: any) => ({...l, date: new Date(l.date)})));
+        if (parsed.expenses) setExpenses(parsed.expenses.map((e: any) => ({...e, date: new Date(e.date)})));
         if (parsed.orders) setOrders(parsed.orders.map((o: any) => ({
             ...o,
             openedAt: new Date(o.openedAt),
@@ -95,11 +96,9 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
             if (parsed.isRegisterOpen !== undefined) setIsRegisterOpen(parsed.isRegisterOpen);
             if (parsed.registerBalance) setRegisterBalance(parsed.registerBalance);
         } else {
-            // Force reset of register and login if new shift
             setIsRegisterOpen(false);
             setRegisterBalance(0);
             setCurrentUser(null);
-            // Optionally, we could archive orders, but for now we'll keep them in history
         }
 
       } catch (e) {
@@ -119,9 +118,10 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       tables,
       orders,
       commissionLogs,
+      expenses,
       lastSavedAt: new Date().toISOString()
     }));
-  }, [currentUser, isRegisterOpen, registerBalance, users, products, tables, orders, commissionLogs]);
+  }, [currentUser, isRegisterOpen, registerBalance, users, products, tables, orders, commissionLogs, expenses]);
 
   const login = (pin: string) => {
     const user = users.find(u => u.pin === pin);
@@ -412,11 +412,20 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     return false;
   };
 
+  // Expense Management
+  const addExpense = (expense: Expense) => {
+    setExpenses(prev => [...prev, expense]);
+  };
+  
+  const removeExpense = (expenseId: string) => {
+    setExpenses(prev => prev.filter(e => e.id !== expenseId));
+  };
+
   return (
     <AppContext.Provider value={{
-      currentUser, login, logout, users, products, tables, orders, commissionLogs, isRegisterOpen, registerBalance,
+      currentUser, login, logout, users, products, tables, orders, commissionLogs, expenses, isRegisterOpen, registerBalance,
       openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, addToOrder, removeFromOrder, closeAccount, payCommission, processDirectSale, deleteOrder,
-      addUser, updateUser, removeUser
+      addUser, updateUser, removeUser, addExpense, removeExpense
     }}>
       {children}
     </AppContext.Provider>

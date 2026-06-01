@@ -9,7 +9,7 @@ import { FastSale } from './pages/FastSale';
 import { CashRegister } from './pages/CashRegister';
 import { WaiterPanel } from './pages/WaiterPanel';
 import { Products } from './pages/Products';
-
+import { Finance } from './pages/Finance';
 import { Team } from './pages/Team';
 
 const AppRoutes = () => {
@@ -27,6 +27,7 @@ const AppRoutes = () => {
         <Route path="/fast-sale" element={<FastSale />} />
         <Route path="/cash-register" element={<CashRegister />} />
         <Route path="/products" element={<Products />} />
+        <Route path="/finance" element={<Finance />} />
         <Route path="/team" element={<Team />} />
         <Route path="/commissions" element={<WaiterPanel />} />
         <Route path="*" element={<Navigate to="/" replace />} />

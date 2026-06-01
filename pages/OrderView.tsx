@@ -480,39 +480,39 @@ export const OrderView = ({ tableId, onBack }: Props) => {
 
     {/* RECEIPT PRINT LAYOUT (Hidden on Screen, Visible on Print) */}
     {/* Using FIXED positioning to break out of any overflow:hidden parents */}
-    <div className="hidden print:block fixed inset-0 w-full h-full bg-white z-[9999] p-0 m-0 overflow-auto">
-        <div className="w-[80mm] p-2 font-mono text-black text-[12px] leading-tight">
-            <div className="text-center mb-4 border-b border-black pb-2 border-dashed">
-                <h1 className="text-base font-bold uppercase">PIER DO COSTA</h1>
+    <div className="hidden print:block fixed inset-0 bg-white z-[9999] p-0 m-0 overflow-auto">
+        <div className="w-[58mm] mx-auto p-1 font-mono text-black text-[10px] leading-tight">
+            <div className="text-center mb-3 border-b border-black pb-1 border-dashed">
+                <h1 className="text-sm font-bold uppercase">PIER DO COSTA</h1>
                 <p>Restaurante & Bar</p>
                 <p>{new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</p>
             </div>
             
-            <div className="mb-4 border-b border-black pb-2 border-dashed">
+            <div className="mb-3 border-b border-black pb-1 border-dashed">
                 <div className="flex justify-between">
                     <span>MESA: {table.number}</span>
-                    <span>{table.customName}</span>
+                    <span className="truncate ml-2">{table.customName}</span>
                 </div>
                 <div>Garçom: {waiterName}</div>
-                <div>Conferência de Conta</div>
+                <div className="font-bold text-center mt-1">Conferência de Conta</div>
             </div>
 
-            <div className="mb-4">
+            <div className="mb-3">
                 <div className="flex font-bold border-b border-black border-dashed pb-1 mb-1">
-                    <span className="w-8">Qtd</span>
-                    <span className="flex-1">Item</span>
-                    <span className="w-12 text-right">Total</span>
+                    <span className="w-6">Qtd</span>
+                    <span className="flex-1 truncate">Item</span>
+                    <span className="w-10 text-right">Total</span>
                 </div>
                 {order.items.map((item, idx) => (
                     <div key={idx} className="flex mb-1">
-                        <span className="w-8">{item.quantity}</span>
-                        <span className="flex-1 truncate">{item.productName}</span>
-                        <span className="w-12 text-right">{item.total.toFixed(2)}</span>
+                        <span className="w-6">{item.quantity}</span>
+                        <span className="flex-1 truncate pr-1">{item.productName}</span>
+                        <span className="w-10 text-right">{item.total.toFixed(2)}</span>
                     </div>
                 ))}
             </div>
 
-            <div className="border-t border-black border-dashed pt-2 space-y-1">
+            <div className="border-t border-black border-dashed pt-1 space-y-1">
                 <div className="flex justify-between">
                     <span>Subtotal:</span>
                     <span>R$ {order.subtotal.toFixed(2)}</span>
@@ -523,13 +523,13 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                         <span>R$ {(order.subtotal * 0.1).toFixed(2)}</span>
                     </div>
                 )}
-                <div className="flex justify-between font-bold text-sm mt-2 pt-2 border-t border-black">
+                <div className="flex justify-between font-bold text-sm mt-1 pt-1 border-t border-black">
                     <span>TOTAL:</span>
                     <span>R$ {finalTotal.toFixed(2)}</span>
                 </div>
             </div>
 
-            <div className="text-center mt-8 text-[10px]">
+            <div className="text-center mt-6 text-[9px]">
                 <p>*** NÃO É DOCUMENTO FISCAL ***</p>
                 <p>Obrigado pela preferência!</p>
             </div>

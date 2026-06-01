@@ -15,6 +15,7 @@ export const Products = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
+  const [cost, setCost] = useState('');
   const [category, setCategory] = useState(CATEGORIES[0].id);
   const [stock, setStock] = useState('100');
   
@@ -29,31 +30,31 @@ export const Products = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !price) return;
+    if (!name || !price || !cost) return;
 
     if (editingId) {
         const updated: Product = {
             id: editingId,
             name,
             price: parseFloat(price),
-            cost: parseFloat(price) * 0.4,
+            cost: parseFloat(cost),
             categoryId: category,
             stock: parseInt(stock)
         };
         updateProduct(updated);
         setEditingId(null);
-        showToast('Produto atualizado com sucesso!');
+        showToast('Produto atualizado!');
     } else {
         const newProduct: Product = {
             id: `p-${Date.now()}`,
             name,
             price: parseFloat(price),
-            cost: parseFloat(price) * 0.4,
+            cost: parseFloat(cost),
             categoryId: category,
             stock: parseInt(stock)
         };
         addProduct(newProduct);
-        showToast('Produto cadastrado com sucesso!');
+        showToast('Produto cadastrado!');
     }
     
     resetForm();
@@ -63,6 +64,7 @@ export const Products = () => {
     setEditingId(null);
     setName('');
     setPrice('');
+    setCost('');
     setStock('100');
     setCategory(CATEGORIES[0].id);
   };
@@ -71,6 +73,7 @@ export const Products = () => {
       setEditingId(product.id);
       setName(product.name);
       setPrice(product.price.toString());
+      setCost(product.cost.toString());
       setStock(product.stock.toString());
       setCategory(product.categoryId);
       // Switch to form view on mobile so user can see what they are editing
@@ -171,9 +174,21 @@ export const Products = () => {
                         />
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                         <div>
-                            <label className="block text-sm text-slate-400 mb-1">Preço Venda (R$)</label>
+                            <label className="block text-sm text-slate-400 mb-1">Custo (R$)</label>
+                            <input 
+                                type="number"
+                                step="0.01"
+                                value={cost}
+                                onChange={e => setCost(e.target.value)}
+                                className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-white focus:border-pier-neon focus:outline-none focus:bg-black/40 transition-all"
+                                placeholder="0.00"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm text-slate-400 mb-1">Venda (R$)</label>
                             <input 
                                 type="number"
                                 step="0.01"
@@ -185,7 +200,7 @@ export const Products = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm text-slate-400 mb-1">Estoque Inicial</label>
+                            <label className="block text-sm text-slate-400 mb-1">Estoque</label>
                             <input 
                                 type="number"
                                 value={stock}
@@ -193,6 +208,21 @@ export const Products = () => {
                                 className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-white focus:border-pier-neon focus:outline-none focus:bg-black/40 transition-all"
                                 required
                             />
+                        </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center bg-pier-green/5 border border-pier-green/20 rounded-lg p-2 px-4 mt-2">
+                        <div>
+                            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Lucro / Unidade</p>
+                            <p className="text-sm font-bold text-pier-green font-mono">
+                                R$ {Math.max(0, parseFloat(price || '0') - parseFloat(cost || '0')).toFixed(2)}
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Margem Bruta</p>
+                            <p className="text-sm font-bold text-pier-neon font-mono">
+                                {parseFloat(price) > 0 ? Math.round(((parseFloat(price) - parseFloat(cost || '0')) / parseFloat(price)) * 100) : 0}%
+                            </p>
                         </div>
                     </div>
 
