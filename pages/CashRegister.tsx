@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../services/AppContext';
-import { Wallet, TrendingUp, CreditCard, Banknote, Landmark, CheckCircle, Search, RefreshCw, Trash2 } from 'lucide-react';
+import { Wallet, TrendingUp, CreditCard, Banknote, Landmark, CheckCircle, Search, RefreshCw, Trash2, AlertCircle } from 'lucide-react';
 
 export const CashRegister = () => {
   const { currentUser, isRegisterOpen, registerBalance, openRegister, closeRegister, orders, tables, deleteOrder } = useApp();

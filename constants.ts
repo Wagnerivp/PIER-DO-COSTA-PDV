@@ -189,12 +189,12 @@ export const INITIAL_TABLES: Table[] = [
   ...Array.from({ length: 15 }, (_, i) => ({
     id: `t${i + 1}`,
     number: i + 1,
-    status: 'AVAILABLE' as TableStatus,
+    status: 'AVAILABLE' as 'AVAILABLE',
   })),
   ...Array.from({ length: 10 }, (_, i) => ({
     id: `b${i + 1}`,
     number: 100 + i + 1,
-    status: 'AVAILABLE' as TableStatus,
+    status: 'AVAILABLE' as 'AVAILABLE',
     customName: `Balcão ${i + 1}`
   }))
 ];

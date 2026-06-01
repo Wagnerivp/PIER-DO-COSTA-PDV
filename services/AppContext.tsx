@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, PropsWithChildren } from 'react';
-import { User, Product, Table, Order, CommissionLog, OrderItem, Expense } from '../types';
+import { User, Product, Table, Order, CommissionLog, OrderItem, Expense, DeletedItemLog } from '../types';
 import { INITIAL_USERS, INITIAL_PRODUCTS, INITIAL_TABLES } from '../constants';
 import { supabase } from './supabase';
 
@@ -425,7 +425,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       total: subtotal,
       openedAt: new Date(),
       closedAt: new Date(),
-      paymentMethod
+      paymentMethod: paymentMethod as any
     };
 
     setOrders(prev => [...prev, newOrder]);

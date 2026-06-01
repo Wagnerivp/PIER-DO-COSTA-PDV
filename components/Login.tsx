@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../services/AppContext';
-import { ShieldCheck, User, Coffee, ChevronLeft, Delete } from 'lucide-react';
+import { ShieldCheck, User, Coffee, ChevronLeft, X } from 'lucide-react';
 
 export const Login = () => {
   const { users, login } = useApp();
@@ -119,7 +119,7 @@ export const Login = () => {
                             onClick={handleDelete}
                             className="aspect-square bg-white/5 hover:bg-red-500/20 active:bg-red-500/40 border border-white/5 rounded-2xl text-red-400 flex items-center justify-center transition-all active:scale-[0.95]"
                         >
-                            <Delete size={28} />
+                            <X size={28} />
                         </button>
                     </div>
                 </div>
