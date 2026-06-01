@@ -1,18 +1,18 @@
 import { Category, Product, Table, User } from './types';
 
 export const INITIAL_USERS: User[] = [
-  { id: crypto.randomUUID(), name: 'Igor', role: 'ADMIN', pin: '1111', commissionBalance: 0 },
-  { id: crypto.randomUUID(), name: 'Cris', role: 'WAITER', pin: '2222', commissionBalance: 0 },
-  { id: crypto.randomUUID(), name: 'Caixa', role: 'CASHIER', pin: '3333', commissionBalance: 0 },
+  { id: 'u1', name: 'Administrativo', role: 'ADMIN', pin: '1111', commissionBalance: 0 },
+  { id: 'u2', name: 'Garçom', role: 'WAITER', pin: '2222', commissionBalance: 0 },
+  { id: 'u3', name: 'Caixa', role: 'CASHIER', pin: '3333', commissionBalance: 0 },
 ];
 
 export const CATEGORIES: Category[] = [
-  { id: crypto.randomUUID(), name: 'Cervejas', icon: '🍺' },
-  { id: crypto.randomUUID(), name: 'Na Brasa', icon: '🍗' },
-  { id: crypto.randomUUID(), name: 'Petiscos', icon: '🍤' },
-  { id: crypto.randomUUID(), name: 'Drinks', icon: '🍹' },
-  { id: crypto.randomUUID(), name: 'Doses', icon: '🥃' },
-  { id: crypto.randomUUID(), name: 'Sem Álcool', icon: '🥤' },
+  { id: 'c1', name: 'Cervejas', icon: '🍺' },
+  { id: 'c6', name: 'Na Brasa', icon: '🍗' },
+  { id: 'c3', name: 'Petiscos', icon: '🍤' },
+  { id: 'c2', name: 'Drinks', icon: '🍹' },
+  { id: 'c5', name: 'Doses', icon: '🥃' },
+  { id: 'c4', name: 'Sem Álcool', icon: '🥤' },
 ];
 
 

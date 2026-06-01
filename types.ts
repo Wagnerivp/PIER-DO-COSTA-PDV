@@ -44,12 +44,22 @@ export interface OrderItem {
   total: number;
 }
 
+export interface DeletedItemLog {
+  productId: string;
+  productName: string;
+  quantity: number;
+  deletedAt: Date;
+  deletedByUserId: string;
+  deletedByUserName: string;
+}
+
 export interface Order {
   id: string;
   tableId: string;
   waiterId: string;
   status: 'OPEN' | 'CLOSED' | 'CANCELLED';
   items: OrderItem[];
+  deletedItems?: DeletedItemLog[];
   subtotal: number; // Sum of items
   serviceFee: number; // 10%
   discount: number;

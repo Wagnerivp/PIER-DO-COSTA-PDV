@@ -99,13 +99,30 @@ export const Layout = ({ children }: PropsWithChildren) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-slate-950 print:overflow-visible print:h-auto print:static relative z-0">
+      <main className="flex-1 flex flex-col overflow-auto bg-slate-950 print:overflow-visible print:h-auto print:static relative z-0">
         <div className="hidden lg:block absolute inset-0 pointer-events-none -z-10 print:hidden">
            {/* ambient lights */}
            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-pier-neon/5 rounded-full blur-[100px]"></div>
            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-pier-green/5 rounded-full blur-[100px]"></div>
         </div>
-        <div className="p-4 lg:p-8 min-h-full print:p-0 print:m-0">
+        
+        {/* Mobile Header (Sair) */}
+        <div className="lg:hidden flex items-center justify-between p-4 border-b border-white/10 shrink-0 bg-slate-900/50 backdrop-blur-md sticky top-0 z-10 print:hidden">
+           <div className="flex items-center gap-2">
+               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-pier-neon to-pier-green flex items-center justify-center text-pier-900 font-bold shrink-0">
+                 {currentUser?.name.charAt(0)}
+               </div>
+               <h1 className="text-lg font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-pier-neon to-pier-green">
+                 PIER DO COSTA
+               </h1>
+           </div>
+           <button onClick={logout} className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg flex items-center gap-2 transition-colors">
+               <LogOut size={20} />
+               <span className="text-sm font-medium">Sair</span>
+           </button>
+        </div>
+
+        <div className="flex-1 p-4 lg:p-8 shrink-0 print:p-0 print:m-0">
           {children}
         </div>
       </main>

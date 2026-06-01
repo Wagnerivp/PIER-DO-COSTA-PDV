@@ -304,6 +304,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
           if (!existingItem) return order;
 
           let newItems;
+          let quantityRemoved = 0;
           if (existingItem.quantity > 1 && !removeAll) {
               // Decrease quantity
               newItems = order.items.map(i => 
@@ -311,10 +312,23 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
                   ? { ...i, quantity: i.quantity - 1, total: (i.quantity - 1) * i.price }
                   : i
               );
+              quantityRemoved = 1;
           } else {
               // Remove item
               newItems = order.items.filter(i => i.productId !== productId);
+              quantityRemoved = existingItem.quantity;
           }
+
+          const deletedLog: DeletedItemLog = {
+              productId: existingItem.productId,
+              productName: existingItem.productName,
+              quantity: quantityRemoved,
+              deletedAt: new Date(),
+              deletedByUserId: currentUser?.id || 'unknown',
+              deletedByUserName: currentUser?.name || 'Sistema'
+          };
+
+          const newDeletedItems = [...(order.deletedItems || []), deletedLog];
 
           const subtotal = newItems.reduce((acc, item) => acc + item.total, 0);
           const serviceFee = subtotal * 0.10;
@@ -322,6 +336,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
           return {
               ...order,
               items: newItems,
+              deletedItems: newDeletedItems,
               subtotal,
               serviceFee,
               total: subtotal + serviceFee - order.discount
