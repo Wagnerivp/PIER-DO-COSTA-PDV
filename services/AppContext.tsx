@@ -56,84 +56,106 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [commissionLogs, setCommissionLogs] = useState<CommissionLog[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
+  // Helper para aplicar state
+  const applyState = (parsed: any, isLocal: boolean) => {
+      let isExpired = false;
+      if (parsed.lastSavedAt) {
+           const lastSaved = new Date(parsed.lastSavedAt);
+           const now = new Date();
+           if ((now.getTime() - lastSaved.getTime()) > 24 * 60 * 60 * 1000) {
+               isExpired = true;
+           }
+      }
+
+      if (parsed.users) {
+          setUsers(prev => JSON.stringify(prev) === JSON.stringify(parsed.users) ? prev : parsed.users);
+      }
+      if (parsed.products) {
+          setProducts(prev => JSON.stringify(prev) === JSON.stringify(parsed.products) ? prev : parsed.products);
+      }
+      if (parsed.tables) {
+          setTables(prev => JSON.stringify(prev) === JSON.stringify(parsed.tables) ? prev : parsed.tables);
+      }
+      if (parsed.commissionLogs) {
+          const mappedLogs = parsed.commissionLogs.map((l: any) => ({...l, date: new Date(l.date)}));
+          setCommissionLogs(prev => JSON.stringify(prev) === JSON.stringify(mappedLogs) ? prev : mappedLogs);
+      }
+      if (parsed.expenses) {
+          const mappedExpenses = parsed.expenses.map((e: any) => ({...e, date: new Date(e.date)}));
+          setExpenses(prev => JSON.stringify(prev) === JSON.stringify(mappedExpenses) ? prev : mappedExpenses);
+      }
+      if (parsed.orders) {
+          const mappedOrders = parsed.orders.map((o: any) => ({
+              ...o,
+              openedAt: new Date(o.openedAt),
+              closedAt: o.closedAt ? new Date(o.closedAt) : undefined
+          }));
+          setOrders(prev => JSON.stringify(prev) === JSON.stringify(mappedOrders) ? prev : mappedOrders);
+      }
+
+      // Estado local do device (caixa e user logado) só puxamos se vier do localStorage 
+      // ou se ainda não tiver ninguém logado e quisermos sincronizar
+      if (isLocal) {
+          if (!isExpired) {
+              if (parsed.currentUser) setCurrentUser(parsed.currentUser);
+              if (parsed.isRegisterOpen !== undefined) setIsRegisterOpen(parsed.isRegisterOpen);
+              if (parsed.registerBalance) setRegisterBalance(parsed.registerBalance);
+          } else {
+              setIsRegisterOpen(false);
+              setRegisterBalance(0);
+              setCurrentUser(null);
+          }
+      } else {
+          // Syncs vindos do Cloud para Caixa
+          if (parsed.isRegisterOpen !== undefined) setIsRegisterOpen(parsed.isRegisterOpen);
+          if (parsed.registerBalance) setRegisterBalance(parsed.registerBalance);
+      }
+  };
+
   // Load from Cloud / LocalStorage
   useEffect(() => {
     const loadState = async () => {
-        let parsed: any = null;
+        let parsedCloud: any = null;
+        let parsedLocal: any = null;
+        
+        const savedData = localStorage.getItem('pier_pdv_data');
+        if (savedData) {
+            try {
+                parsedLocal = JSON.parse(savedData);
+                applyState(parsedLocal, true);
+            } catch(e) { console.error(e) }
+        }
         
         try {
-            // 1. Try Cloud Sync First
+            // 1. Try Cloud Sync
             const { data, error } = await supabase.from('app_state').select('data').eq('id', 1).maybeSingle();
             if (data && data.data) {
-                parsed = data.data;
+                parsedCloud = data.data;
+                applyState(parsedCloud, false);
             }
         } catch (e) {
-            console.error("Failed to load from cloud, falling back to local storage");
-        }
-
-        // 2. Fallback to LocalStorage
-        if (!parsed) {
-            const savedData = localStorage.getItem('pier_pdv_data');
-            if (savedData) {
-                try {
-                    parsed = JSON.parse(savedData);
-                } catch(e) { console.error(e) }
-            }
-        }
-
-        if (parsed) {
-            let isExpired = false;
-            // Shift Validation disabled for now to prevent logging everyone out unnecessarily 
-            // - we want persistent state!
-            if (parsed.lastSavedAt) {
-                 const lastSaved = new Date(parsed.lastSavedAt);
-                 const now = new Date();
-                 // If older than 24 hours, expire the session but keep data
-                 if ((now.getTime() - lastSaved.getTime()) > 24 * 60 * 60 * 1000) {
-                     isExpired = true;
-                 }
-            }
-
-            if (parsed.users) {
-                // Sincroniza nomes padrao
-                const updatedUsers = parsed.users.map((u: User) => {
-                    const defaultUser = INITIAL_USERS.find(du => du.id === u.id);
-                    if (defaultUser && (u.id === 'u1' || u.id === 'u2' || u.id === 'u3')) {
-                        return { ...u, name: defaultUser.name, role: defaultUser.role };
-                    }
-                    return u;
-                });
-                setUsers(updatedUsers);
-            }
-            if (parsed.products) setProducts(parsed.products);
-            if (parsed.tables) setTables(parsed.tables);
-            if (parsed.commissionLogs) setCommissionLogs(parsed.commissionLogs.map((l: any) => ({...l, date: new Date(l.date)})));
-            if (parsed.expenses) setExpenses(parsed.expenses.map((e: any) => ({...e, date: new Date(e.date)})));
-            if (parsed.orders) setOrders(parsed.orders.map((o: any) => ({
-                ...o,
-                openedAt: new Date(o.openedAt),
-                closedAt: o.closedAt ? new Date(o.closedAt) : undefined
-            })));
-
-            if (!isExpired) {
-                if (parsed.currentUser) setCurrentUser(parsed.currentUser);
-                if (parsed.isRegisterOpen !== undefined) setIsRegisterOpen(parsed.isRegisterOpen);
-                if (parsed.registerBalance) setRegisterBalance(parsed.registerBalance);
-            } else {
-                setIsRegisterOpen(false);
-                setRegisterBalance(0);
-                setCurrentUser(null);
-            }
+            console.error("Failed to load from cloud", e);
         }
     };
     
     loadState();
+
+    // Polling Real-Time Simples para manter devices Sincronizados
+    const interval = setInterval(async () => {
+        try {
+            const { data, error } = await supabase.from('app_state').select('data').eq('id', 1).maybeSingle();
+            if (data && data.data) {
+                applyState(data.data, false);
+            }
+        } catch(e) {}
+    }, 5000); // Poll a cada 5 segundos
+    
+    return () => clearInterval(interval);
   }, []);
 
   // Save to LocalStorage and Supabase (Cloud Sync)
   useEffect(() => {
     const payload = {
-      currentUser,
       isRegisterOpen,
       registerBalance,
       users,
@@ -145,8 +167,12 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       lastSavedAt: new Date().toISOString()
     };
     
-    // Local Save
-    localStorage.setItem('pier_pdv_data', JSON.stringify(payload));
+    // Local Save (inclui currentUser para manter o login neste device)
+    const localPayload = {
+       ...payload,
+       currentUser
+    };
+    localStorage.setItem('pier_pdv_data', JSON.stringify(localPayload));
     
     // Cloud Sync (Debounced to avoid rate limits)
     const timeout = setTimeout(async () => {

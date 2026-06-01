@@ -91,6 +91,16 @@ CREATE TABLE public.commission_logs (
 -- 2. Configuração de Segurança (Row Level Security - RLS)
 -- ==========================================
 
+-- Tabela para guardar o estado global (Cloud Sync Simplificado)
+CREATE TABLE IF NOT EXISTS public.app_state (
+  id integer PRIMARY KEY,
+  data jsonb NOT NULL,
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.app_state ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Permitir leitura/escrita anonima para testes" ON public.app_state FOR ALL USING (true);
+
 -- Habilitando RLS para todas as tabelas
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
