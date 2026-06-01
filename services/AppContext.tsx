@@ -43,6 +43,8 @@ interface AppContextData {
 
 const AppContext = createContext<AppContextData | undefined>(undefined);
 
+let pendingSyncCount = 0;
+
 export const AppProvider = ({ children }: PropsWithChildren) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
@@ -142,6 +144,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
     // Polling Real-Time Simples para manter devices Sincronizados
     const interval = setInterval(async () => {
+        if (pendingSyncCount > 0) return; // Não faz poll se o device tiver edições pendentes
         try {
             const { data, error } = await supabase.from('app_state').select('data').eq('id', 1).maybeSingle();
             if (data && data.data) {
@@ -174,16 +177,23 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     };
     localStorage.setItem('pier_pdv_data', JSON.stringify(localPayload));
     
+    pendingSyncCount++;
+    
     // Cloud Sync (Debounced to avoid rate limits)
     const timeout = setTimeout(async () => {
         try {
             await supabase.from('app_state').upsert({ id: 1, data: payload, updated_at: new Date().toISOString() });
         } catch (e) {
             console.error("Cloud sync failed", e);
+        } finally {
+            pendingSyncCount = Math.max(0, pendingSyncCount - 1);
         }
     }, 2000);
 
-    return () => clearTimeout(timeout);
+    return () => {
+        clearTimeout(timeout);
+        pendingSyncCount = Math.max(0, pendingSyncCount - 1);
+    };
   }, [currentUser, isRegisterOpen, registerBalance, users, products, tables, orders, commissionLogs, expenses]);
 
 
