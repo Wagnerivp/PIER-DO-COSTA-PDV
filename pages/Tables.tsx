@@ -5,7 +5,7 @@ import { Users, AlertCircle, Edit2, Trash2 } from 'lucide-react';
 import { OrderView } from './OrderView';
 
 export const Tables = () => {
-  const { tables, users, orders, openTable, updateTableName, cancelOrder, isRegisterOpen, currentUser } = useApp();
+  const { tables, users, orders, openTable, updateTableName, cancelOrder, isRegisterOpen, currentUser, customers } = useApp();
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tableToReset, setTableToReset] = useState<string | null>(null);
@@ -13,6 +13,7 @@ export const Tables = () => {
   // Form States for Opening Table
   const [selectedWaiter, setSelectedWaiter] = useState<string>('');
   const [clientName, setClientName] = useState('');
+  const [showCustomersDropdown, setShowCustomersDropdown] = useState(false);
 
   const waiters = users.filter(u => u.role === 'WAITER');
 
@@ -187,15 +188,41 @@ export const Tables = () => {
                     </div>
                 ) : (
                     <div className="mb-6 space-y-4">
-                        <div>
+                        <div className="relative">
                             <label className="block text-sm text-slate-400 mb-2">Nome do Cliente / Mesa (Opcional)</label>
                             <input 
                                 type="text"
                                 value={clientName}
-                                onChange={(e) => setClientName(e.target.value)}
+                                onChange={(e) => {
+                                    setClientName(e.target.value);
+                                    setShowCustomersDropdown(true);
+                                }}
+                                onFocus={() => setShowCustomersDropdown(true)}
+                                onBlur={() => setTimeout(() => setShowCustomersDropdown(false), 200)}
                                 className="w-full bg-black/40 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-pier-neon focus:outline-none"
                                 placeholder="Ex: Mesa João ou Aniversário"
                             />
+                            {showCustomersDropdown && clientName && customers.filter(c => c.name.toLowerCase().includes(clientName.toLowerCase())).length > 0 && (
+                                <div className="absolute z-10 w-full mt-1 bg-slate-800 border border-white/10 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                                    {customers
+                                        .filter(c => c.name.toLowerCase().includes(clientName.toLowerCase()))
+                                        .slice(0, 5) // Limit to 5 suggestions
+                                        .map(customer => (
+                                            <div 
+                                                key={customer.id} 
+                                                className="px-4 py-2 hover:bg-slate-700 cursor-pointer text-white flex justify-between items-center"
+                                                onClick={() => {
+                                                    setClientName(customer.name);
+                                                    setShowCustomersDropdown(false);
+                                                }}
+                                            >
+                                                <span>{customer.name}</span>
+                                                {customer.phone && <span className="text-xs text-slate-400 font-mono">{customer.phone}</span>}
+                                            </div>
+                                        ))
+                                    }
+                                </div>
+                            )}
                         </div>
 
                         <div>
