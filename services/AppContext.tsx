@@ -564,7 +564,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
   return (
     <AppContext.Provider value={{
-      currentUser, login, logout, users, products, tables, orders, commissionLogs, expenses, isRegisterOpen, registerBalance,
+      currentUser, login, directLogin, logout, users, products, tables, orders, commissionLogs, expenses, isRegisterOpen, registerBalance,
       openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payCommission, processDirectSale, deleteOrder,
       addUser, updateUser, removeUser, addExpense, removeExpense
     }}>

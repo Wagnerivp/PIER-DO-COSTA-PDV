@@ -104,7 +104,17 @@ export const Login = () => {
   };
 
   const handleUserClick = (perfil: any) => {
-      setSelectedUser(perfil);
+      if (perfil.cargo === 'GARCOM' || perfil.cargo === 'WAITER') {
+          directLogin({
+              id: perfil.id,
+              name: perfil.nome,
+              role: 'WAITER', // Mapeando para o AppContext
+              pin: perfil.pin || '',
+              commissionBalance: 0
+          });
+      } else {
+          setSelectedUser(perfil);
+      }
   };
 
   const getRoleIcon = (role: string) => {
