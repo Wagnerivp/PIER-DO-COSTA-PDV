@@ -44,6 +44,8 @@ interface AppContextData {
   
   // Customers
   addCustomer: (customer: Customer) => void;
+  updateCustomer: (customer: Customer) => void;
+  removeCustomer: (customerId: string) => void;
 }
 
 const AppContext = createContext<AppContextData | undefined>(undefined);
@@ -287,6 +289,22 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   
   const removeUser = (userId: string) => {
       setUsers(prev => prev.filter(u => u.id !== userId));
+  };
+
+  // Customer Management
+  const addCustomer = (customer: Customer) => {
+      setCustomers(prev => {
+          if (prev.find(c => c.phone === customer.phone)) return prev;
+          return [...prev, customer];
+      });
+  };
+
+  const updateCustomer = (updatedCustomer: Customer) => {
+      setCustomers(prev => prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
+  };
+
+  const removeCustomer = (customerId: string) => {
+      setCustomers(prev => prev.filter(c => c.id !== customerId));
   };
 
   // Product Management
@@ -574,9 +592,9 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
   return (
     <AppContext.Provider value={{
-      currentUser, login, directLogin, logout, users, products, tables, orders, commissionLogs, expenses, isRegisterOpen, registerBalance,
+      currentUser, login, directLogin, logout, users, products, tables, orders, customers, commissionLogs, expenses, isRegisterOpen, registerBalance,
       openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payCommission, processDirectSale, deleteOrder,
-      addUser, updateUser, removeUser, addExpense, removeExpense
+      addUser, updateUser, removeUser, addExpense, removeExpense, addCustomer, updateCustomer, removeCustomer
     }}>
       {children}
     </AppContext.Provider>

@@ -63,6 +63,13 @@ export const Layout = ({ children }: PropsWithChildren) => {
           )}
 
           {(currentUser?.role === 'MANAGER' || currentUser?.role === 'ADMIN') && (
+            <Link to="/customers" className={`px-4 lg:px-6 py-4 flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-1 lg:gap-4 transition-all min-w-[70px] snap-center ${isActive('/customers')}`}>
+              <Users size={22} className="w-[20px] h-[20px] lg:w-[22px] lg:h-[22px]" />
+              <span className="text-[10px] lg:text-base font-medium">Clientes</span>
+            </Link>
+          )}
+
+          {(currentUser?.role === 'MANAGER' || currentUser?.role === 'ADMIN') && (
             <Link to="/commissions" className={`px-4 lg:px-6 py-4 flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-1 lg:gap-4 transition-all min-w-[70px] snap-center ${isActive('/commissions')}`}>
               <DollarSign size={22} className="w-[20px] h-[20px] lg:w-[22px] lg:h-[22px]" />
               <span className="text-[10px] lg:text-base font-medium">Comis.</span>

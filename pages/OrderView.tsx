@@ -507,15 +507,38 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                             autoFocus
                           />
                       </div>
-                      <div>
+                      <div className="relative">
                           <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Nome do Cliente</label>
                           <input
                             type="text"
                             value={customerName}
-                            onChange={(e) => setCustomerName(e.target.value)}
-                            placeholder="Opcional"
+                            onChange={(e) => {
+                                setCustomerName(e.target.value);
+                                // Optional auto-fill if perfect match
+                                const match = customers.find(c => c.name.toLowerCase() === e.target.value.toLowerCase());
+                                if (match && !customerPhone) setCustomerPhone(match.phone);
+                            }}
+                            placeholder="Buscar cliente ou digitar novo..."
                             className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-400 text-lg transition-colors"
                           />
+                          {customerName && customerName.length >= 2 && !customers.find(c => c.name === customerName && c.phone === customerPhone) && (
+                              <div className="absolute top-full left-0 w-full mt-1 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden divide-y divide-white/5 max-h-40 overflow-y-auto">
+                                  {customers.filter(c => c.name.toLowerCase().includes(customerName.toLowerCase())).map(c => (
+                                      <button
+                                          key={c.id}
+                                          type="button"
+                                          onClick={() => {
+                                              setCustomerName(c.name);
+                                              setCustomerPhone(c.phone);
+                                          }}
+                                          className="w-full text-left px-4 py-2 hover:bg-slate-700 transition-colors flex justify-between"
+                                      >
+                                          <span className="text-white">{c.name}</span>
+                                          <span className="text-slate-400 font-mono text-sm">{c.phone}</span>
+                                      </button>
+                                  ))}
+                              </div>
+                          )}
                       </div>
                       
                       <button 

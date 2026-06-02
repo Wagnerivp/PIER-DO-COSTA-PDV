@@ -11,6 +11,7 @@ import { WaiterPanel } from './pages/WaiterPanel';
 import { Products } from './pages/Products';
 import { Finance } from './pages/Finance';
 import { Team } from './pages/Team';
+import { Customers } from './pages/Customers';
 
 const AppRoutes = () => {
   const { currentUser } = useApp();
@@ -30,6 +31,7 @@ const AppRoutes = () => {
         <Route path="/finance" element={<Finance />} />
         <Route path="/team" element={<Team />} />
         <Route path="/commissions" element={<WaiterPanel />} />
+        <Route path="/customers" element={<Customers />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
