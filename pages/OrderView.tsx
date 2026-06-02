@@ -282,17 +282,16 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                             <div className="flex bg-white/5 rounded-lg border border-white/5 overflow-hidden">
                                 <button 
                                     onClick={() => removeFromOrder(tableId, item.productId)}
-                                    className="w-8 h-8 flex items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white transition-colors border-r border-white/5"
-                                    title="Diminuir"
+                                    className="w-10 h-10 flex items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white transition-colors border-r border-white/5"
+                                    title="Diminuir quantidade"
                                 >
-                                    <Minus size={14} />
+                                    <Minus size={16} />
                                 </button>
                                 <button 
                                     onClick={() => setItemToRemove(item.productId)}
-                                    className="w-8 h-8 flex items-center justify-center text-red-500/70 hover:bg-red-500/20 hover:text-red-400 transition-colors"
-                                    title="Excluir item"
+                                    className="px-3 h-10 flex items-center justify-center gap-1 text-red-500 hover:bg-red-500/20 transition-colors bg-red-500/10 font-bold text-xs"
                                 >
-                                    <Trash2 size={14} />
+                                    <Trash2 size={14} /> EXCLUIR
                                 </button>
                             </div>
                         </div>
@@ -323,32 +322,37 @@ export const OrderView = ({ tableId, onBack }: Props) => {
 
         <div className="shrink-0 p-4 bg-slate-900 border-t border-white/10 shadow-[0_-5px_20px_rgba(0,0,0,0.2)] z-10">
             <div className="space-y-2 text-sm mb-4">
-                <div className="flex justify-between text-slate-400 text-xs">
-                    <span>Subtotal</span>
-                    <span className="font-mono">R$ {order.subtotal.toFixed(2)}</span>
+                <div className="flex justify-between text-slate-400 text-xs mt-2">
+                    <span className="text-sm">Subtotal</span>
+                    <span className="font-mono text-sm">R$ {order.subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-slate-400 text-xs items-center">
-                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => setIncludeService(!includeService)}>
-                        <div className={`w-3 h-3 rounded border flex items-center justify-center transition-colors ${includeService ? 'bg-pier-neon border-pier-neon' : 'border-slate-500'}`}>
-                            {includeService && <div className="w-1.5 h-1.5 bg-slate-900 rounded-[1px]" />}
+                
+                <button 
+                    onClick={() => setIncludeService(!includeService)}
+                    className={`w-full flex justify-between items-center p-3 mt-2 rounded-xl border transition-all ${includeService ? 'bg-pier-neon/10 border-pier-neon text-pier-neon' : 'bg-slate-800/50 border-white/10 text-slate-400 hover:bg-slate-700/50'}`}
+                >
+                    <div className="flex items-center gap-2">
+                        <div className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-colors ${includeService ? 'bg-pier-neon border-pier-neon' : 'border-slate-500'}`}>
+                            {includeService && <div className="w-2 h-2 bg-slate-900 rounded-[2px]" />}
                         </div>
-                        <span>Serviço (10%)</span>
+                        <span className="font-bold text-sm">Serviço (10%)</span>
                     </div>
-                    <span className="font-mono">R$ {(includeService ? (order.subtotal * 0.1) : 0).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-xl font-bold text-white pt-3 border-t border-white/10 items-end">
+                    <span className="font-mono font-bold">R$ {(order.subtotal * 0.1).toFixed(2)}</span>
+                </button>
+
+                <div className="flex justify-between text-xl font-bold text-white pt-3 border-t border-white/10 items-end mt-2">
                     <span>Total</span>
                     <span className="text-pier-neon font-mono text-2xl">R$ {finalTotal.toFixed(2)}</span>
                 </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3">
                 <button
                     onClick={handlePrintConference}
-                    className="p-4 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-                    title="Imprimir Comanda"
+                    className="w-full p-4 rounded-xl border border-pier-neon/30 text-pier-neon bg-pier-neon/5 hover:bg-pier-neon/20 font-bold flex items-center justify-center gap-2 transition-colors"
                 >
                     <Printer size={20} />
+                    IMPRIMIR VIA DO CLIENTE {includeService ? 'COM 10%' : 'SEM TAXA'}
                 </button>
                 <button 
                     onClick={() => {
@@ -356,9 +360,9 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                         setPaymentModalOpen(true);
                     }}
                     disabled={order.items.length === 0}
-                    className="flex-1 py-4 rounded-xl bg-gradient-to-r from-pier-neon to-pier-green text-pier-900 font-bold text-lg hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+                    className="w-full py-4 rounded-xl bg-gradient-to-r from-pier-neon to-pier-green text-pier-900 font-bold text-lg hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
                 >
-                    ENCERRAR VENDA
+                    ENCERRAR VENDA E PAGAR
                 </button>
             </div>
         </div>

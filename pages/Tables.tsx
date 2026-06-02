@@ -149,13 +149,24 @@ export const Tables = () => {
                             )}
                         </div>
 
-                        <div className="w-full text-center pointer-events-none">
+                        <div className="w-full text-center pointer-events-none mb-1">
                             {isOccupied ? (
                                 <p className={`text-xs font-medium truncate text-red-300`}>{waiter?.name.split(' ')[0]}</p>
                             ) : (
                                 <p className="text-xs text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">Abrir</p>
                             )}
                         </div>
+
+                        {/* Order total display */}
+                        {isOccupied && (
+                            <div className="w-full text-center pointer-events-none border-t border-red-500/20 pt-2 mt-auto">
+                                <p className="text-sm font-bold text-red-100">
+                                    {orders.find(o => o.tableId === table.id && o.status === 'OPEN') 
+                                        ? `R$ ${orders.find(o => o.tableId === table.id && o.status === 'OPEN')?.total.toFixed(2)}`
+                                        : 'R$ 0.00'}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 );
             })}
