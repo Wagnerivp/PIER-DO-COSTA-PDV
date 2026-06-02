@@ -172,7 +172,7 @@ export const WaiterPanel = () => {
                                         <td className="p-4 text-slate-300 whitespace-nowrap">{new Date(log.date).toLocaleString()}</td>
                                         {isManager && <td className="p-4 text-white font-medium">{waiterName}</td>}
                                         <td className="p-4 text-slate-500 font-mono text-xs">
-                                            {isAdvance ? log.description || 'Vale' : (log.orderId ? log.orderId.split('-')[1] : '-')}
+                                            {isAdvance ? (log.description || 'Vale') : (log.orderId ? (log.orderId.includes('-') ? log.orderId.split('-')[1] : log.orderId) : '-')}
                                         </td>
                                         <td className={`p-4 font-bold text-right font-mono ${isAdvance ? 'text-red-400' : 'text-pier-neon'}`}>
                                             R$ {log.amount.toFixed(2)}

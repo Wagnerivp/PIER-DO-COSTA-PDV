@@ -10,7 +10,7 @@ interface Props {
 }
 
 export const OrderView = ({ tableId, onBack }: Props) => {
-  const { tables, orders, products, addToOrder, removeFromOrder, closeAccount, updateTableName, cancelOrder, requestCheckout, currentUser, customers, addCustomer } = useApp();
+  const { tables, orders, products, addToOrder, removeFromOrder, closeAccount, updateTableName, cancelOrder, requestCheckout, currentUser, customers, addCustomer, updateCustomer } = useApp();
   const [selectedCategory, setSelectedCategory] = useState('c-all');
   const [searchTerm, setSearchTerm] = useState('');
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -114,7 +114,12 @@ export const OrderView = ({ tableId, onBack }: Props) => {
     }
     
     // Auto save customer
-    addCustomer({ id: Date.now().toString(), name: customerName || 'Cliente', phone: customerPhone });
+    const existingCustomer = customers.find(c => c.phone === customerPhone);
+    if (!existingCustomer) {
+        addCustomer({ id: Date.now().toString(), name: customerName || 'Cliente', phone: customerPhone });
+    } else if (customerName && existingCustomer.name !== customerName) {
+        updateCustomer({ ...existingCustomer, name: customerName });
+    }
     
     setIsGeneratingReceipt(true);
     let receiptEl = document.getElementById('receipt-print-area');
