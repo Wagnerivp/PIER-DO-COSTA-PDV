@@ -122,7 +122,7 @@ export const Layout = ({ children }: PropsWithChildren) => {
            </button>
         </div>
 
-        <div className="flex-1 p-4 lg:p-8 shrink-0 print:p-0 print:m-0">
+        <div className="flex-1 p-4 lg:p-8 print:p-0 print:m-0 flex flex-col min-h-0">
           {children}
         </div>
       </main>

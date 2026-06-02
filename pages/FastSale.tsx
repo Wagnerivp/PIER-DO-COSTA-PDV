@@ -149,7 +149,7 @@ export const FastSale = () => {
         </div>
 
         {/* Right Side: Cart */}
-        <div className="lg:col-span-1 border border-white/10 rounded-2xl bg-black/20 flex flex-col h-[600px] shadow-2xl">
+        <div className="lg:col-span-1 border border-white/10 rounded-2xl bg-black/20 flex flex-col h-[60vh] md:h-auto md:min-h-[500px] shadow-2xl">
             <div className="p-4 border-b border-white/10 flex items-center gap-3 bg-white/5 rounded-t-2xl">
                 <ShoppingCart className="text-pier-neon" size={24} />
                 <h3 className="text-xl font-bold text-white">Carrinho</h3>
