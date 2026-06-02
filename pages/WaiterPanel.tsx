@@ -31,9 +31,9 @@ export const WaiterPanel = () => {
   startOfWeek.setHours(0,0,0,0);
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const dailyTotal = relevantLogs.filter(l => new Date(l.date) >= startOfDay).reduce((acc, l) => acc + l.amount, 0);
-  const weeklyTotal = relevantLogs.filter(l => new Date(l.date) >= startOfWeek).reduce((acc, l) => acc + l.amount, 0);
-  const monthlyTotal = relevantLogs.filter(l => new Date(l.date) >= startOfMonth).reduce((acc, l) => acc + l.amount, 0);
+  const dailyTotal = relevantLogs.filter(l => new Date(l.date) >= startOfDay).reduce((acc, l) => acc + (l.amount || 0), 0);
+  const weeklyTotal = relevantLogs.filter(l => new Date(l.date) >= startOfWeek).reduce((acc, l) => acc + (l.amount || 0), 0);
+  const monthlyTotal = relevantLogs.filter(l => new Date(l.date) >= startOfMonth).reduce((acc, l) => acc + (l.amount || 0), 0);
 
   // 1. Calculate "A RECEBER" (Potential Commission from OPEN tables)
   const openOrders = orders.filter(o => 
@@ -41,7 +41,7 @@ export const WaiterPanel = () => {
     (targetWaiterId ? o.waiterId === targetWaiterId : true)
   );
   
-  const potentialCommission = openOrders.reduce((acc, o) => acc + (o.subtotal * 0.10), 0);
+  const potentialCommission = openOrders.reduce((acc, o) => acc + ((o.subtotal || 0) * 0.10), 0);
 
   const waiters = users.filter(u => u.role === 'WAITER');
 
@@ -175,7 +175,7 @@ export const WaiterPanel = () => {
                                             {isAdvance ? (log.description || 'Vale') : (log.orderId ? (log.orderId.includes('-') ? log.orderId.split('-')[1] : log.orderId) : '-')}
                                         </td>
                                         <td className={`p-4 font-bold text-right font-mono ${isAdvance ? 'text-red-400' : 'text-pier-neon'}`}>
-                                            R$ {log.amount.toFixed(2)}
+                                            R$ {(log.amount || 0).toFixed(2)}
                                         </td>
                                         <td className="p-4 text-center">
                                             {isAdvance ? (

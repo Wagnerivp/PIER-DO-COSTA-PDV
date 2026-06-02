@@ -67,7 +67,8 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [commissionLogs, setCommissionLogs] = useState<CommissionLog[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
-  const lastProcessedStateRef = useRef<string | null>(null);
+  const lastCloudStateRef = useRef<string | null>(null);
+  const lastLocalStateRef = useRef<string | null>(null);
 
   // Helper para aplicar state
   const applyState = (parsed: any, isLocal: boolean) => {
@@ -139,7 +140,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
               commissionLogs: parsed.commissionLogs,
               expenses: parsed.expenses,
           };
-          lastProcessedStateRef.current = JSON.stringify(stripped);
+          lastCloudStateRef.current = JSON.stringify(stripped);
       }
   };
 
@@ -213,30 +214,37 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       expenses
     };
     
-    const signature = JSON.stringify(stripped);
-    if (signature === lastProcessedStateRef.current) {
-        // This state change was just synced from the cloud, don't ping-pong it back
-        return;
+    const cloudSignature = JSON.stringify(stripped);
+    const localSignature = JSON.stringify({ ...stripped, currentUser });
+    
+    // Se não houve NENHUMA mudança, não faz nada
+    if (localSignature === lastLocalStateRef.current) {
+         return; 
     }
+    
+    lastLocalStateRef.current = localSignature;
     
     const payload = {
       ...stripped,
       lastSavedAt: new Date().toISOString()
     };
     
-    // Update ref so we don't save the exact same state twice locally either
-    lastProcessedStateRef.current = signature;
-    
-    // Local Save (inclui currentUser para manter o login neste device)
+    // Sempre salva no localStorage se houce qualquer mudança (incluindo login/logout)
     const localPayload = {
        ...payload,
        currentUser
     };
     localStorage.setItem('pier_pdv_data', JSON.stringify(localPayload));
     
-    pendingSyncCount++;
+    // Se a mudança for APENAS no currentUser (cloudSignature igual), não envia para o Cloud
+    if (cloudSignature === lastCloudStateRef.current) {
+        return;
+    }
     
-    // Cloud Sync (Debounced to avoid rate limits)
+    lastCloudStateRef.current = cloudSignature;
+    
+    pendingSyncCount++;
+    // Sincronização em Nuvem (Debounced)
     const timeout = setTimeout(async () => {
         try {
             await supabase.from('app_state').upsert({ id: 1, data: payload, updated_at: new Date().toISOString() });
