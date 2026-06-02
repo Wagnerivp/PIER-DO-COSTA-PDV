@@ -5,7 +5,7 @@ import { Users, AlertCircle, Edit2, Trash2 } from 'lucide-react';
 import { OrderView } from './OrderView';
 
 export const Tables = () => {
-  const { tables, users, openTable, updateTableName, cancelOrder, isRegisterOpen, currentUser } = useApp();
+  const { tables, users, orders, openTable, updateTableName, cancelOrder, isRegisterOpen, currentUser } = useApp();
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tableToReset, setTableToReset] = useState<string | null>(null);
