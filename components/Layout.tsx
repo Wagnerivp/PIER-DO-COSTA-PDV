@@ -99,7 +99,7 @@ export const Layout = ({ children }: PropsWithChildren) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-auto bg-slate-950 print:overflow-visible print:h-auto print:static relative z-0">
+      <main className="flex-1 flex flex-col overflow-y-auto bg-slate-950 print:overflow-visible print:h-auto print:static relative z-0">
         <div className="hidden lg:block absolute inset-0 pointer-events-none -z-10 print:hidden">
            {/* ambient lights */}
            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-pier-neon/5 rounded-full blur-[100px]"></div>

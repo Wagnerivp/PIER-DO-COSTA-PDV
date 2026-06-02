@@ -212,7 +212,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
       </div>
 
       {/* Right: Cart/Order */}
-      <div className="w-full md:w-80 lg:w-[400px] glass-panel rounded-2xl flex flex-col h-[45vh] md:h-auto border border-white/10 order-1 md:order-2 shrink-0 shadow-2xl overflow-hidden relative">
+      <div className="w-full md:w-80 lg:w-[400px] glass-panel rounded-2xl flex flex-col h-[45vh] md:h-full border border-white/10 order-1 md:order-2 shrink-0 shadow-2xl overflow-hidden relative">
         <div className="shrink-0 p-4 border-b border-white/10 bg-slate-900/80">
             <div className="flex justify-between items-start mb-2">
                 <div className="flex-1 mr-2">

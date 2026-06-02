@@ -58,7 +58,7 @@ export const Tables = () => {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in relative">
+    <div className="flex flex-col h-full animate-fade-in relative space-y-6 pb-2">
 
       {/* Reset Table Modal */}
       {tableToReset && (
@@ -85,7 +85,7 @@ export const Tables = () => {
         </div>
       )}
 
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center shrink-0">
         <div>
             <h2 className="text-3xl font-bold text-white">Salão</h2>
             <p className="text-slate-400">Mapa de mesas em tempo real</p>
@@ -101,9 +101,9 @@ export const Tables = () => {
         </div>
       </div>
 
-      <div>
-          <h3 className="text-xl font-bold text-white mb-4">Salão Principal</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-8">
+      <div className="flex-1 min-h-0 flex flex-col">
+          <h3 className="text-xl font-bold text-white mb-4 shrink-0">Salão Principal</h3>
+          <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 pr-2 pb-4">
             {tables.filter(t => t.id.startsWith('t')).map(table => {
                 const isOccupied = table.status === 'OCCUPIED' || table.status === 'PAYMENT_PENDING';
                 const waiter = users.find(u => u.id === table.waiterId);

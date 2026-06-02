@@ -80,22 +80,22 @@ export const FastSale = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-5xl mx-auto pb-10 relative">
+    <div className="flex flex-col h-full animate-fade-in max-w-5xl mx-auto w-full relative space-y-4">
       {/* Toast */}
       {toastMessage && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] bg-pier-green text-pier-900 px-6 py-3 rounded-xl font-bold shadow-2xl flex items-center gap-2 animate-fade-in">
               <span>{toastMessage}</span>
           </div>
       )}
-      <div>
+      <div className="shrink-0">
         <h2 className="text-3xl font-bold text-white">Venda Rápida (Balcão)</h2>
         <p className="text-slate-400">Terminal Ponto de Venda</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-6 pb-4">
         {/* Left Side: Product Search */}
-        <div className="lg:col-span-2 space-y-4">
-            <div className="relative">
+        <div className="lg:col-span-2 flex flex-col min-h-0 space-y-4">
+            <div className="relative shrink-0">
                 <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                     <input 
@@ -149,7 +149,7 @@ export const FastSale = () => {
         </div>
 
         {/* Right Side: Cart */}
-        <div className="lg:col-span-1 border border-white/10 rounded-2xl bg-black/20 flex flex-col h-[60vh] md:h-auto md:min-h-[500px] shadow-2xl">
+        <div className="lg:col-span-1 border border-white/10 rounded-2xl bg-black/20 flex flex-col h-[60vh] md:h-full shadow-2xl overflow-hidden">
             <div className="p-4 border-b border-white/10 flex items-center gap-3 bg-white/5 rounded-t-2xl">
                 <ShoppingCart className="text-pier-neon" size={24} />
                 <h3 className="text-xl font-bold text-white">Carrinho</h3>
