@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, PropsWithChildren } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, PropsWithChildren } from 'react';
 import { User, Product, Table, Order, CommissionLog, OrderItem, Expense, DeletedItemLog } from '../types';
 import { INITIAL_USERS, INITIAL_PRODUCTS, INITIAL_TABLES } from '../constants';
 import { supabase } from './supabase';
@@ -58,6 +58,8 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [commissionLogs, setCommissionLogs] = useState<CommissionLog[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
+  const lastProcessedStateRef = useRef<string | null>(null);
+
   // Helper para aplicar state
   const applyState = (parsed: any, isLocal: boolean) => {
       let isExpired = false;
@@ -112,10 +114,28 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
           if (parsed.isRegisterOpen !== undefined) setIsRegisterOpen(parsed.isRegisterOpen);
           if (parsed.registerBalance) setRegisterBalance(parsed.registerBalance);
       }
+      // Track the signature of what we just applied so we don't reflect it back
+      if (!isLocal && parsed) {
+          const stripped = {
+              isRegisterOpen: parsed.isRegisterOpen,
+              registerBalance: parsed.registerBalance,
+              users: parsed.users,
+              products: parsed.products,
+              tables: parsed.tables,
+              orders: parsed.orders,
+              commissionLogs: parsed.commissionLogs,
+              expenses: parsed.expenses,
+          };
+          lastProcessedStateRef.current = JSON.stringify(stripped);
+      }
   };
+
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Load from Cloud / LocalStorage
   useEffect(() => {
+    let lastCloudSyncDate = 0;
+
     const loadState = async () => {
         let parsedCloud: any = null;
         let parsedLocal: any = null;
@@ -133,10 +153,13 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
             const { data, error } = await supabase.from('app_state').select('data').eq('id', 1).maybeSingle();
             if (data && data.data) {
                 parsedCloud = data.data;
+                lastCloudSyncDate = new Date(parsedCloud.lastSavedAt || 0).getTime();
                 applyState(parsedCloud, false);
             }
         } catch (e) {
             console.error("Failed to load from cloud", e);
+        } finally {
+            setIsLoaded(true);
         }
     };
     
@@ -148,7 +171,12 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         try {
             const { data, error } = await supabase.from('app_state').select('data').eq('id', 1).maybeSingle();
             if (data && data.data) {
-                applyState(data.data, false);
+                const cloudTime = new Date(data.data.lastSavedAt || 0).getTime();
+                // Apenas aplica se for state novo
+                if (cloudTime > lastCloudSyncDate) {
+                    lastCloudSyncDate = cloudTime;
+                    applyState(data.data, false);
+                }
             }
         } catch(e) {}
     }, 5000); // Poll a cada 5 segundos
@@ -158,7 +186,9 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
   // Save to LocalStorage and Supabase (Cloud Sync)
   useEffect(() => {
-    const payload = {
+    if (!isLoaded) return;
+    
+    const stripped = {
       isRegisterOpen,
       registerBalance,
       users,
@@ -166,9 +196,22 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       tables,
       orders,
       commissionLogs,
-      expenses,
+      expenses
+    };
+    
+    const signature = JSON.stringify(stripped);
+    if (signature === lastProcessedStateRef.current) {
+        // This state change was just synced from the cloud, don't ping-pong it back
+        return;
+    }
+    
+    const payload = {
+      ...stripped,
       lastSavedAt: new Date().toISOString()
     };
+    
+    // Update ref so we don't save the exact same state twice locally either
+    lastProcessedStateRef.current = signature;
     
     // Local Save (inclui currentUser para manter o login neste device)
     const localPayload = {
