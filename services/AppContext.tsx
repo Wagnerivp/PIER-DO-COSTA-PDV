@@ -6,6 +6,7 @@ import { supabase } from './supabase';
 interface AppContextData {
   currentUser: User | null;
   login: (pin: string) => boolean;
+  directLogin: (user: User) => void;
   logout: () => void;
   users: User[];
   products: Product[];
@@ -247,6 +248,10 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       return true;
     }
     return false;
+  };
+
+  const directLogin = (user: User) => {
+    setCurrentUser(user);
   };
 
   const logout = () => setCurrentUser(null);

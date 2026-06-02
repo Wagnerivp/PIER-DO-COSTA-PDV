@@ -1,9 +1,8 @@
 import { Category, Product, Table, User } from './types';
 
 export const INITIAL_USERS: User[] = [
-  { id: 'u1', name: 'Administrativo', role: 'ADMIN', pin: '1111', commissionBalance: 0 },
-  { id: 'u2', name: 'Garçom', role: 'WAITER', pin: '2222', commissionBalance: 0 },
-  { id: 'u3', name: 'Caixa', role: 'CASHIER', pin: '3333', commissionBalance: 0 },
+  { id: 'u1', name: 'Administrativo', role: 'ADMIN', pin: '0508', commissionBalance: 0 },
+  { id: 'u2', name: 'Garçon', role: 'WAITER', pin: '1234', commissionBalance: 0 },
 ];
 
 export const CATEGORIES: Category[] = [
