@@ -78,10 +78,12 @@ export interface Order {
 export interface CommissionLog {
   id: string;
   waiterId: string;
-  orderId: string;
+  orderId?: string;
   amount: number;
   date: Date;
   status: 'PENDING' | 'PAID';
+  type?: 'COMMISSION' | 'ADVANCE';
+  description?: string;
 }
 
 export type ExpenseCategory = 'MAINTENANCE' | 'CLEANING' | 'SALARY' | 'SUPPLIES' | 'OTHER';

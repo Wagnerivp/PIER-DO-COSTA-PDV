@@ -32,6 +32,7 @@ interface AppContextData {
   removeFromOrder: (tableId: string, productId: string, removeAll?: boolean) => void;
   closeAccount: (tableId: string, paymentMethod: any, includeServiceFee: boolean) => void;
   payCommission: (logId: string) => void;
+  addAdvance: (waiterId: string, amount: number, description: string) => void;
   processDirectSale: (items: {product: Product, quantity: number, total: number}[], paymentMethod: string) => void;
   deleteOrder: (orderId: string, pin: string) => boolean;
   addExpense: (expense: Expense) => void;
@@ -506,7 +507,8 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         orderId: currentOrder.id,
         amount: finalServiceFee,
         date: new Date(),
-        status: 'PAID'
+        status: 'PAID',
+        type: 'COMMISSION'
       };
       setCommissionLogs(prev => [...prev, commissionLog]);
       
@@ -523,6 +525,19 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     if (!log || log.status === 'PAID') return;
 
     setCommissionLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'PAID' } : l));
+  };
+
+  const addAdvance = (waiterId: string, amount: number, description: string) => {
+    const log: CommissionLog = {
+      id: `adv-${Date.now()}`,
+      waiterId,
+      amount: -amount, // Negative amount for advance reductions
+      date: new Date(),
+      status: 'PAID',
+      type: 'ADVANCE',
+      description
+    };
+    setCommissionLogs(prev => [...prev, log]);
   };
 
   const processDirectSale = (items: {product: Product, quantity: number, total: number}[], paymentMethod: string) => {
@@ -593,7 +608,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   return (
     <AppContext.Provider value={{
       currentUser, login, directLogin, logout, users, products, tables, orders, customers, commissionLogs, expenses, isRegisterOpen, registerBalance,
-      openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payCommission, processDirectSale, deleteOrder,
+      openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payCommission, addAdvance, processDirectSale, deleteOrder,
       addUser, updateUser, removeUser, addExpense, removeExpense, addCustomer, updateCustomer, removeCustomer
     }}>
       {children}

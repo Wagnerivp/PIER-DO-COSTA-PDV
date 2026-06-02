@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
 import { useApp } from '../services/AppContext';
-import { DollarSign, CheckCircle, Clock, TrendingUp, Filter, Users } from 'lucide-react';
+import { DollarSign, CheckCircle, Clock, TrendingUp, Filter, Users, MinusSquare, X } from 'lucide-react';
 
 export const WaiterPanel = () => {
-  const { currentUser, commissionLogs, orders, users } = useApp();
+  const { currentUser, commissionLogs, orders, users, addAdvance } = useApp();
   const [selectedWaiterFilter, setSelectedWaiterFilter] = useState<string>('ALL');
+  
+  // Advance Modal State
+  const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false);
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [advanceDescription, setAdvanceDescription] = useState('');
+  const [advanceWaiterId, setAdvanceWaiterId] = useState<string>('');
 
   // If Manager, show all. If Waiter, show only theirs.
   const isManager = currentUser?.role === 'MANAGER' || currentUser?.role === 'ADMIN';
@@ -14,6 +20,21 @@ export const WaiterPanel = () => {
       ? (selectedWaiterFilter === 'ALL' ? undefined : selectedWaiterFilter)
       : currentUser?.id;
 
+  const relevantLogs = commissionLogs.filter(log => 
+      targetWaiterId ? log.waiterId === targetWaiterId : true
+  );
+
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  startOfWeek.setHours(0,0,0,0);
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const dailyTotal = relevantLogs.filter(l => new Date(l.date) >= startOfDay).reduce((acc, l) => acc + l.amount, 0);
+  const weeklyTotal = relevantLogs.filter(l => new Date(l.date) >= startOfWeek).reduce((acc, l) => acc + l.amount, 0);
+  const monthlyTotal = relevantLogs.filter(l => new Date(l.date) >= startOfMonth).reduce((acc, l) => acc + l.amount, 0);
+
   // 1. Calculate "A RECEBER" (Potential Commission from OPEN tables)
   const openOrders = orders.filter(o => 
     o.status === 'OPEN' && 
@@ -22,14 +43,17 @@ export const WaiterPanel = () => {
   
   const potentialCommission = openOrders.reduce((acc, o) => acc + (o.subtotal * 0.10), 0);
 
-  // 2. Calculate "RECEBIDO" (Commission from CLOSED tables - Logs)
-  const relevantLogs = commissionLogs.filter(log => 
-      targetWaiterId ? log.waiterId === targetWaiterId : true
-  );
-
-  const realizedCommission = relevantLogs.reduce((acc, l) => acc + l.amount, 0);
-
   const waiters = users.filter(u => u.role === 'WAITER');
+
+  const handleAddAdvance = () => {
+      const amount = parseFloat(advanceAmount);
+      if (amount > 0 && advanceWaiterId) {
+          addAdvance(advanceWaiterId, amount, advanceDescription || 'Vale adiantamento');
+          setIsAdvanceModalOpen(false);
+          setAdvanceAmount('');
+          setAdvanceDescription('');
+      }
+  };
 
   return (
     <div className="space-y-8 animate-fade-in h-[calc(100vh-6rem)] flex flex-col">
@@ -60,27 +84,58 @@ export const WaiterPanel = () => {
             )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="glass-card p-6 rounded-2xl border border-pier-neon/20 bg-gradient-to-br from-pier-neon/5 to-transparent relative overflow-hidden">
                 <div className="absolute right-0 top-0 p-4 opacity-10"><TrendingUp size={64} /></div>
                 <div className="flex items-center gap-2 mb-2">
                     <TrendingUp size={18} className="text-pier-neon" />
-                    <p className="text-xs text-pier-neon uppercase tracking-wider font-bold">A Receber (Mesas Abertas)</p>
+                    <p className="text-xs text-pier-neon uppercase tracking-wider font-bold">A Receber</p>
                 </div>
-                <p className="text-4xl font-bold text-white font-mono">R$ {potentialCommission.toFixed(2)}</p>
-                <p className="text-xs text-slate-400 mt-2">Comissão projetada sobre mesas em atendimento</p>
+                <p className="text-3xl font-bold text-white font-mono">R$ {potentialCommission.toFixed(2)}</p>
+                <p className="text-[10px] text-slate-400 mt-2">Mesas em atendimento</p>
             </div>
 
             <div className="glass-card p-6 rounded-2xl border border-pier-green/20 bg-gradient-to-br from-pier-green/5 to-transparent relative overflow-hidden">
-                <div className="absolute right-0 top-0 p-4 opacity-10"><DollarSign size={64} /></div>
+                <div className="absolute right-0 top-0 p-4 opacity-10"><CheckCircle size={64} /></div>
                  <div className="flex items-center gap-2 mb-2">
                     <CheckCircle size={18} className="text-pier-green" />
-                    <p className="text-xs text-pier-green uppercase tracking-wider font-bold">Recebido (Pago)</p>
+                    <p className="text-xs text-pier-green uppercase tracking-wider font-bold">Hoje</p>
                 </div>
-                <p className="text-4xl font-bold text-white font-mono">R$ {realizedCommission.toFixed(2)}</p>
-                 <p className="text-xs text-slate-400 mt-2">Valor acumulado já fechado em caixa</p>
+                <p className="text-3xl font-bold text-white font-mono">R$ {dailyTotal.toFixed(2)}</p>
+                 <p className="text-[10px] text-slate-400 mt-2">Total diário fechado</p>
+            </div>
+
+            <div className="glass-card p-6 rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent relative overflow-hidden">
+                <div className="absolute right-0 top-0 p-4 opacity-10"><Clock size={64} /></div>
+                 <div className="flex items-center gap-2 mb-2">
+                    <Clock size={18} className="text-blue-400" />
+                    <p className="text-xs text-blue-400 uppercase tracking-wider font-bold">Semana</p>
+                </div>
+                <p className="text-3xl font-bold text-white font-mono">R$ {weeklyTotal.toFixed(2)}</p>
+                 <p className="text-[10px] text-slate-400 mt-2">Fechado na semana (abate vales)</p>
+            </div>
+
+            <div className="glass-card p-6 rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-transparent relative overflow-hidden">
+                <div className="absolute right-0 top-0 p-4 opacity-10"><DollarSign size={64} /></div>
+                 <div className="flex items-center gap-2 mb-2">
+                    <DollarSign size={18} className="text-purple-400" />
+                    <p className="text-xs text-purple-400 uppercase tracking-wider font-bold">Mês</p>
+                </div>
+                <p className="text-3xl font-bold text-white font-mono">R$ {monthlyTotal.toFixed(2)}</p>
+                 <p className="text-[10px] text-slate-400 mt-2">Fechado no mês (abate vales)</p>
             </div>
         </div>
+
+        {isManager && (
+            <div className="flex justify-end">
+                <button 
+                    onClick={() => setIsAdvanceModalOpen(true)}
+                    className="flex items-center gap-2 bg-red-500/10 text-red-400 border border-red-500/30 px-4 py-2 rounded-xl hover:bg-red-500 hover:text-white transition-all font-bold text-sm"
+                >
+                    <MinusSquare size={18} /> LANÇAR VALE (ADIANTAMENTO)
+                </button>
+            </div>
+        )}
 
         <div className="glass-panel rounded-2xl overflow-hidden flex-1 flex flex-col border border-white/10">
             <div className="p-4 border-b border-white/10 bg-slate-900/50 flex justify-between items-center">
@@ -111,16 +166,27 @@ export const WaiterPanel = () => {
                         ) : (
                             relevantLogs.slice().reverse().map(log => {
                                 const waiterName = users.find(u => u.id === log.waiterId)?.name;
+                                const isAdvance = log.type === 'ADVANCE';
                                 return (
                                     <tr key={log.id} className="hover:bg-white/5 transition-colors group">
                                         <td className="p-4 text-slate-300 whitespace-nowrap">{new Date(log.date).toLocaleString()}</td>
                                         {isManager && <td className="p-4 text-white font-medium">{waiterName}</td>}
-                                        <td className="p-4 text-slate-500 font-mono text-xs">{log.orderId.split('-')[1]}</td>
-                                        <td className="p-4 text-pier-neon font-bold text-right font-mono">R$ {log.amount.toFixed(2)}</td>
+                                        <td className="p-4 text-slate-500 font-mono text-xs">
+                                            {isAdvance ? log.description || 'Vale' : (log.orderId ? log.orderId.split('-')[1] : '-')}
+                                        </td>
+                                        <td className={`p-4 font-bold text-right font-mono ${isAdvance ? 'text-red-400' : 'text-pier-neon'}`}>
+                                            R$ {log.amount.toFixed(2)}
+                                        </td>
                                         <td className="p-4 text-center">
-                                            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-pier-green bg-pier-green/10 border border-pier-green/20 px-2.5 py-1 rounded-full">
-                                                <CheckCircle size={10} /> PAGO
-                                            </span>
+                                            {isAdvance ? (
+                                                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-red-400 bg-red-400/10 border border-red-400/20 px-2.5 py-1 rounded-full uppercase">
+                                                    <MinusSquare size={10} /> VALE
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-pier-green bg-pier-green/10 border border-pier-green/20 px-2.5 py-1 rounded-full uppercase">
+                                                    <CheckCircle size={10} /> PAGO
+                                                </span>
+                                            )}
                                         </td>
                                     </tr>
                                 );
@@ -130,6 +196,74 @@ export const WaiterPanel = () => {
                 </table>
             </div>
         </div>
+
+        {/* Modal Lançar Vale */}
+        {isAdvanceModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+                <div className="glass-panel p-8 rounded-2xl w-full max-w-md border border-red-500/30 animate-scale-in relative">
+                    <button 
+                        onClick={() => setIsAdvanceModalOpen(false)} 
+                        className="absolute right-4 top-4 text-slate-400 hover:text-white transition-colors"
+                    >
+                        <X size={24} />
+                    </button>
+                    
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-2 mb-6">
+                        <MinusSquare className="text-red-400" />
+                        Lançar Vale 
+                    </h2>
+                    
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1">Selecione o Garçom</label>
+                            <select 
+                                value={advanceWaiterId}
+                                onChange={(e) => setAdvanceWaiterId(e.target.value)}
+                                className="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-red-400 transition-all"
+                            >
+                                <option value="" disabled>Escolha um garçom...</option>
+                                {waiters.map(w => (
+                                    <option key={w.id} value={w.id}>{w.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1">Valor do Adiantamento</label>
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">R$</span>
+                                <input 
+                                    type="number"
+                                    value={advanceAmount}
+                                    onChange={(e) => setAdvanceAmount(e.target.value)}
+                                    placeholder="0.00"
+                                    className="w-full bg-slate-800/50 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:border-red-400 transition-all font-mono"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1">Motivo (Opcional)</label>
+                            <input 
+                                type="text"
+                                value={advanceDescription}
+                                onChange={(e) => setAdvanceDescription(e.target.value)}
+                                placeholder="Ex: Vale transporte, lanche..."
+                                className="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-red-400 transition-all"
+                            />
+                        </div>
+
+                        <button 
+                            onClick={handleAddAdvance}
+                            disabled={!advanceWaiterId || !advanceAmount || parseFloat(advanceAmount) <= 0}
+                            className="w-full py-3 mt-4 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                            Confirmar Lançamento
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 };
