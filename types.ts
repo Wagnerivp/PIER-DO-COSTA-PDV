@@ -25,6 +25,12 @@ export interface Product {
   description?: string;
 }
 
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+}
+
 export type TableStatus = 'AVAILABLE' | 'OCCUPIED' | 'PAYMENT_PENDING';
 
 export interface Table {

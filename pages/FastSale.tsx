@@ -23,8 +23,10 @@ export const FastSale = () => {
 
   const filteredProducts = useMemo(() => {
     if (!searchTerm) return [];
+    const normalizeString = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    
     return products.filter(p => 
-      p.name.toLowerCase().includes(searchTerm.toLowerCase())
+      normalizeString(p.name).includes(normalizeString(searchTerm))
     ).slice(0, 5); // top 5 results
   }, [searchTerm, products]);
 

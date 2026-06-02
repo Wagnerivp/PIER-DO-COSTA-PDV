@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, PropsWithChildren } from 'react';
-import { User, Product, Table, Order, CommissionLog, OrderItem, Expense, DeletedItemLog } from '../types';
+import { User, Product, Table, Order, CommissionLog, OrderItem, Expense, DeletedItemLog, Customer } from '../types';
 import { INITIAL_USERS, INITIAL_PRODUCTS, INITIAL_TABLES } from '../constants';
 import { supabase } from './supabase';
 
@@ -12,6 +12,7 @@ interface AppContextData {
   products: Product[];
   tables: Table[];
   orders: Order[];
+  customers: Customer[];
   commissionLogs: CommissionLog[];
   expenses: Expense[];
   isRegisterOpen: boolean;
@@ -40,6 +41,9 @@ interface AppContextData {
   addUser: (user: User) => void;
   updateUser: (user: User) => void;
   removeUser: (userId: string) => void;
+  
+  // Customers
+  addCustomer: (customer: Customer) => void;
 }
 
 const AppContext = createContext<AppContextData | undefined>(undefined);
@@ -56,6 +60,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [tables, setTables] = useState<Table[]>(INITIAL_TABLES);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [commissionLogs, setCommissionLogs] = useState<CommissionLog[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
@@ -80,6 +85,9 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       }
       if (parsed.tables) {
           setTables(prev => JSON.stringify(prev) === JSON.stringify(parsed.tables) ? prev : parsed.tables);
+      }
+      if (parsed.customers) {
+          setCustomers(prev => JSON.stringify(prev) === JSON.stringify(parsed.customers) ? prev : parsed.customers);
       }
       if (parsed.commissionLogs) {
           const mappedLogs = parsed.commissionLogs.map((l: any) => ({...l, date: new Date(l.date)}));
@@ -124,6 +132,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
               products: parsed.products,
               tables: parsed.tables,
               orders: parsed.orders,
+              customers: parsed.customers,
               commissionLogs: parsed.commissionLogs,
               expenses: parsed.expenses,
           };
@@ -196,6 +205,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       products,
       tables,
       orders,
+      customers,
       commissionLogs,
       expenses
     };

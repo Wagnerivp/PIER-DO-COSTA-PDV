@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../services/AppContext';
-import { ArrowLeft, Search, Receipt, CreditCard, Banknote, QrCode, Calculator, Minus, Edit2, Users, X, RefreshCw, Trash2, Printer } from 'lucide-react';
+import { ArrowLeft, Search, Receipt, CreditCard, Banknote, QrCode, Calculator, Minus, Edit2, Users, X, RefreshCw, Trash2, Printer, MessageCircle } from 'lucide-react';
 import { CATEGORIES } from '../constants';
+import html2canvas from 'html2canvas';
 
 interface Props {
   tableId: string;
@@ -9,10 +10,16 @@ interface Props {
 }
 
 export const OrderView = ({ tableId, onBack }: Props) => {
-  const { tables, orders, products, addToOrder, removeFromOrder, closeAccount, updateTableName, cancelOrder, requestCheckout, currentUser } = useApp();
+  const { tables, orders, products, addToOrder, removeFromOrder, closeAccount, updateTableName, cancelOrder, requestCheckout, currentUser, customers, addCustomer } = useApp();
   const [selectedCategory, setSelectedCategory] = useState('c-all');
   const [searchTerm, setSearchTerm] = useState('');
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  
+  // WhatsApp Share State
+  const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [isGeneratingReceipt, setIsGeneratingReceipt] = useState(false);
   
   // Payment State
   const [includeService, setIncludeService] = useState(true);
@@ -26,6 +33,9 @@ export const OrderView = ({ tableId, onBack }: Props) => {
   // Rename Table State
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
+
+  // Mobile layout state
+  const [mobileTab, setMobileTab] = useState<'catalog' | 'cart'>('catalog');
 
   // Prompt states
   const [resetTableModalOpen, setResetTableModalOpen] = useState(false);
@@ -41,9 +51,11 @@ export const OrderView = ({ tableId, onBack }: Props) => {
 
   if (!table || !order) return null;
 
+  const normalizeString = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
   const filteredProducts = products.filter(p => 
     (selectedCategory === 'c-all' || p.categoryId === selectedCategory) && 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    normalizeString(p.name).includes(normalizeString(searchTerm))
   );
 
   const finalTotal = includeService ? (order.subtotal * 1.1) : order.subtotal;
@@ -84,6 +96,83 @@ export const OrderView = ({ tableId, onBack }: Props) => {
   const saveTableName = () => {
       updateTableName(tableId, tempName);
       setIsEditingName(false);
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value.replace(/\D/g, '');
+      setCustomerPhone(val);
+      const existing = customers.find(c => c.phone === val);
+      if (existing) {
+          setCustomerName(existing.name);
+      }
+  };
+
+  const handleSendWhatsApp = async () => {
+    if (!customerPhone) {
+        alert("Preencha o telefone do cliente.");
+        return;
+    }
+    
+    // Auto save customer
+    addCustomer({ id: Date.now().toString(), name: customerName || 'Cliente', phone: customerPhone });
+    
+    setIsGeneratingReceipt(true);
+    let receiptEl = document.getElementById('receipt-print-area');
+    
+    if (receiptEl) {
+        try {
+            // Need to temporarily show the receipt element to allow html2canvas to render it properly
+            receiptEl.classList.remove('hidden', 'print:block', 'fixed', 'left-[-9999px]');
+            receiptEl.classList.add('fixed', 'top-[5000px]', 'left-[5000px]'); // move deeply off-screen but standard display
+            
+            const canvas = await html2canvas(receiptEl, { scale: 2, useCORS: true });
+            
+            // Revert changes
+            receiptEl.classList.remove('fixed', 'top-[5000px]', 'left-[5000px]');
+            receiptEl.classList.add('hidden', 'print:block', 'fixed', 'left-[-9999px]');
+
+            canvas.toBlob(async (blob) => {
+                if (!blob) {
+                    setIsGeneratingReceipt(false);
+                    return;
+                }
+                const file = new File([blob], `cupom-mesa-${table.number}.png`, { type: 'image/png' });
+                
+                // Try Web Share API (Mobile native sharing)
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({
+                            title: 'Cupom Pier do Costa',
+                            text: 'Aqui está seu cupom fiscal eletrônico!',
+                            files: [file]
+                        });
+                        setWhatsappModalOpen(false);
+                    } catch (error) {
+                        console.error('Share failed', error);
+                        // Fallback to whatsapp link
+                        window.open(`https://wa.me/55${customerPhone}?text=Ol%C3%A1%20${encodeURIComponent(customerName)}%2C%20aqui%20est%C3%A1%20o%20resumo%20da%20sua%20conta%20no%20Pier%20do%20Costa!%20Total%3A%20R%24%20${finalTotal.toFixed(2)}`);
+                    }
+                } else {
+                    // Desktop or unsupported: We download the image automatically and open Whatsapp Web
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `cupom-mesa-${table.number}.png`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    
+                    alert("A imagem foi baixada. Você pode anexá-la na conversa do WhatsApp.");
+                    window.open(`https://wa.me/55${customerPhone}?text=Ol%C3%A1%20${encodeURIComponent(customerName)}%2C%20segue%20em%20anexo%20o%20seu%20cupom%20eletr%C3%B4nico%20do%20Pier%20do%20Costa!`);
+                    setWhatsappModalOpen(false);
+                }
+                setIsGeneratingReceipt(false);
+            }, 'image/png');
+        } catch (error) {
+            console.error(error);
+            setIsGeneratingReceipt(false);
+            alert("Erro ao gerar cupom.");
+        }
+    }
   };
 
   return (
@@ -140,9 +229,26 @@ export const OrderView = ({ tableId, onBack }: Props) => {
     )}
 
     {/* MAIN UI - HIDDEN WHEN PRINTING */}
-    <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 animate-fade-in print:hidden">
+    <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 animate-fade-in print:hidden relative">
+      {/* Mobile Tab Toggle */}
+      <div className="md:hidden flex rounded-xl p-1 bg-slate-900 border border-white/10 shrink-0">
+          <button 
+              onClick={() => setMobileTab('catalog')} 
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${mobileTab === 'catalog' ? 'bg-slate-800 text-white shadow' : 'text-slate-400'}`}
+          >
+              Catálogo
+          </button>
+          <button 
+              onClick={() => setMobileTab('cart')} 
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors relative ${mobileTab === 'cart' ? 'bg-pier-neon text-pier-900 shadow' : 'text-slate-400'}`}
+          >
+              Comanda 
+              {order.items.length > 0 && <span className={`ml-2 px-1.5 py-0.5 rounded-full text-xs ${mobileTab === 'cart' ? 'bg-pier-900 text-pier-neon' : 'bg-pier-neon text-pier-900'}`}>{order.items.length}</span>}
+          </button>
+      </div>
+
       {/* Left: Product Catalog */}
-      <div className="flex-1 flex flex-col gap-4 min-h-0 order-2 md:order-1">
+      <div className={`flex-1 flex-col gap-4 min-h-0 order-2 md:order-1 ${mobileTab === 'catalog' ? 'flex' : 'hidden md:flex'}`}>
         {/* Header */}
         <div className="flex items-center justify-between shrink-0">
           <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors bg-white/5 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/10">
@@ -212,7 +318,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
       </div>
 
       {/* Right: Cart/Order */}
-      <div className="w-full md:w-80 lg:w-[400px] glass-panel rounded-2xl flex flex-col h-[45vh] md:h-full border border-white/10 order-1 md:order-2 shrink-0 shadow-2xl overflow-hidden relative">
+      <div className={`w-full md:w-80 lg:w-[400px] glass-panel rounded-2xl flex-col h-full md:h-full border border-white/10 order-1 md:order-2 shrink-0 shadow-2xl overflow-hidden relative ${mobileTab === 'cart' ? 'flex animate-scale-in' : 'hidden md:flex'}`}>
         <div className="shrink-0 p-4 border-b border-white/10 bg-slate-900/80">
             <div className="flex justify-between items-start mb-2">
                 <div className="flex-1 mr-2">
@@ -354,6 +460,13 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                     <Printer size={20} />
                     IMPRIMIR VIA DO CLIENTE {includeService ? 'COM 10%' : 'SEM TAXA'}
                 </button>
+                <button
+                    onClick={() => setWhatsappModalOpen(true)}
+                    className="w-full p-4 rounded-xl border border-green-500/30 text-green-400 bg-green-500/5 hover:bg-green-500/20 font-bold flex items-center justify-center gap-2 transition-colors"
+                >
+                    <MessageCircle size={20} />
+                    ENVIAR COTA POR WHATSAPP
+                </button>
                 <button 
                     onClick={() => {
                         setShowCashInput(false);
@@ -367,6 +480,58 @@ export const OrderView = ({ tableId, onBack }: Props) => {
             </div>
         </div>
       </div>
+
+      {/* WhatsApp Modal */}
+      {whatsappModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in">
+              <div className="glass-panel w-full max-w-sm rounded-2xl p-6 border border-white/10 animate-scale-in">
+                  <div className="flex justify-between items-start mb-6">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <MessageCircle className="text-green-400" /> WhatsApp
+                    </h2>
+                    <button onClick={() => setWhatsappModalOpen(false)} className="text-slate-400 hover:text-white p-2">
+                        <X size={20} />
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-4">
+                      <div>
+                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Telefone com DDD</label>
+                          <input
+                            type="tel"
+                            maxLength={15}
+                            value={customerPhone}
+                            onChange={handlePhoneChange}
+                            placeholder="Ex: 11999998888"
+                            className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-400 font-mono text-lg transition-colors"
+                            autoFocus
+                          />
+                      </div>
+                      <div>
+                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Nome do Cliente</label>
+                          <input
+                            type="text"
+                            value={customerName}
+                            onChange={(e) => setCustomerName(e.target.value)}
+                            placeholder="Opcional"
+                            className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-400 text-lg transition-colors"
+                          />
+                      </div>
+                      
+                      <button 
+                        onClick={handleSendWhatsApp}
+                        disabled={isGeneratingReceipt}
+                        className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-400 text-black font-bold text-lg py-4 rounded-xl transition-all disabled:opacity-50"
+                      >
+                          {isGeneratingReceipt ? 'GERANDO CUPOM...' : 'ENVIAR CUPOM'}
+                      </button>
+                      <p className="text-center text-xs text-slate-500 mt-2">
+                          Uma imagem do cupom será gerada e enviada via WhatsApp.
+                      </p>
+                  </div>
+              </div>
+          </div>
+      )}
 
       {/* Payment Modal */}
       {paymentModalOpen && (
@@ -512,9 +677,10 @@ export const OrderView = ({ tableId, onBack }: Props) => {
 
     {/* RECEIPT PRINT LAYOUT (Hidden on Screen, Visible on Print) */}
     {/* Using FIXED positioning to break out of any overflow:hidden parents */}
-    <div className="hidden print:block fixed inset-0 bg-white z-[9999] p-0 m-0 overflow-auto">
+    <div id="receipt-print-area" className="hidden print:block fixed inset-0 bg-white z-[9999] p-0 m-0 overflow-auto">
         <div className="w-[58mm] mx-auto p-1 font-mono text-black text-[10px] leading-tight">
-            <div className="text-center mb-3 border-b border-black pb-1 border-dashed">
+            <div className="text-center mb-3 border-b border-black pb-1 border-dashed flex flex-col items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-1"><circle cx="12" cy="5" r="3"></circle><line x1="12" y1="22" x2="12" y2="8"></line><path d="M5 12H2a10 10 0 0 0 20 0h-3"></path></svg>
                 <h1 className="text-sm font-bold uppercase">PIER DO COSTA</h1>
                 <p>Restaurante & Bar</p>
                 <p>{new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</p>
