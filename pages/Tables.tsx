@@ -202,25 +202,28 @@ export const Tables = () => {
                                 className="w-full bg-black/40 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-pier-neon focus:outline-none"
                                 placeholder="Ex: Mesa João ou Aniversário"
                             />
-                            {showCustomersDropdown && clientName && customers.filter(c => c.name.toLowerCase().includes(clientName.toLowerCase())).length > 0 && (
-                                <div className="absolute z-10 w-full mt-1 bg-slate-800 border border-white/10 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                            {showCustomersDropdown && clientName && (
+                                <div className="absolute z-50 w-full mt-1 bg-slate-800 border border-white/10 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)] max-h-48 overflow-y-auto">
                                     {customers
-                                        .filter(c => c.name.toLowerCase().includes(clientName.toLowerCase()))
+                                        .filter(c => c.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(clientName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()))
                                         .slice(0, 5) // Limit to 5 suggestions
                                         .map(customer => (
                                             <div 
                                                 key={customer.id} 
-                                                className="px-4 py-2 hover:bg-slate-700 cursor-pointer text-white flex justify-between items-center"
+                                                className="px-4 py-3 hover:bg-slate-700 cursor-pointer text-white flex justify-between items-center border-b border-white/5 last:border-0"
                                                 onClick={() => {
                                                     setClientName(customer.name);
                                                     setShowCustomersDropdown(false);
                                                 }}
                                             >
-                                                <span>{customer.name}</span>
+                                                <span className="font-medium">{customer.name}</span>
                                                 {customer.phone && <span className="text-xs text-slate-400 font-mono">{customer.phone}</span>}
                                             </div>
                                         ))
                                     }
+                                    {customers.filter(c => c.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(clientName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase())).length === 0 && (
+                                        <div className="px-4 py-3 text-slate-400 text-sm italic">Nenhum cliente encontrado</div>
+                                    )}
                                 </div>
                             )}
                         </div>

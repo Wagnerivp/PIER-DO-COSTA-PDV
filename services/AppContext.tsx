@@ -303,7 +303,11 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   // Customer Management
   const addCustomer = (customer: Customer) => {
       setCustomers(prev => {
-          if (prev.find(c => c.phone === customer.phone)) return prev;
+          // Apenas previne duplicatas de telefone se um telefone real for fornecido.
+          // Se phone for vazio, não bloqueia.
+          if (customer.phone && customer.phone.trim() !== '' && prev.find(c => c.phone === customer.phone)) {
+              return prev;
+          }
           return [...prev, customer];
       });
   };

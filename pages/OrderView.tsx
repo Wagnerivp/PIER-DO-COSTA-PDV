@@ -520,15 +520,15 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                             onChange={(e) => {
                                 setCustomerName(e.target.value);
                                 // Optional auto-fill if perfect match
-                                const match = customers.find(c => c.name.toLowerCase() === e.target.value.toLowerCase());
+                                const match = customers.find(c => c.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === e.target.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase());
                                 if (match && !customerPhone) setCustomerPhone(match.phone);
                             }}
                             placeholder="Buscar cliente ou digitar novo..."
                             className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-400 text-lg transition-colors"
                           />
                           {customerName && customerName.length >= 2 && !customers.find(c => c.name === customerName && c.phone === customerPhone) && (
-                              <div className="absolute top-full left-0 w-full mt-1 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden divide-y divide-white/5 max-h-40 overflow-y-auto">
-                                  {customers.filter(c => c.name.toLowerCase().includes(customerName.toLowerCase())).map(c => (
+                              <div className="absolute top-full left-0 w-full mt-1 bg-slate-800 border border-white/10 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)] z-[60] overflow-hidden divide-y divide-white/5 max-h-40 overflow-y-auto">
+                                  {customers.filter(c => c.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(customerName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase())).map(c => (
                                       <button
                                           key={c.id}
                                           type="button"

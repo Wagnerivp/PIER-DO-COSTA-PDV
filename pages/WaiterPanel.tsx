@@ -31,6 +31,14 @@ export const WaiterPanel = () => {
   startOfWeek.setHours(0,0,0,0);
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+  const calculateTotals = (logs: any[], waiterOrders: any[]) => {
+      const daily = logs.filter(l => new Date(l.date) >= startOfDay).reduce((acc, l) => acc + (l.amount || 0), 0);
+      const weekly = logs.filter(l => new Date(l.date) >= startOfWeek).reduce((acc, l) => acc + (l.amount || 0), 0);
+      const monthly = logs.filter(l => new Date(l.date) >= startOfMonth).reduce((acc, l) => acc + (l.amount || 0), 0);
+      const pending = waiterOrders.filter(o => o.status === 'OPEN').reduce((acc, o) => acc + ((o.subtotal || 0) * 0.10), 0);
+      return { daily, weekly, monthly, pending };
+  };
+
   const dailyTotal = relevantLogs.filter(l => new Date(l.date) >= startOfDay).reduce((acc, l) => acc + (l.amount || 0), 0);
   const weeklyTotal = relevantLogs.filter(l => new Date(l.date) >= startOfWeek).reduce((acc, l) => acc + (l.amount || 0), 0);
   const monthlyTotal = relevantLogs.filter(l => new Date(l.date) >= startOfMonth).reduce((acc, l) => acc + (l.amount || 0), 0);
@@ -56,7 +64,7 @@ export const WaiterPanel = () => {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in h-[calc(100vh-6rem)] flex flex-col">
+    <div className="space-y-8 animate-fade-in h-full overflow-y-auto pb-8 pr-2 scrollbar-thin">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <h2 className="text-3xl font-bold text-white">
@@ -137,14 +145,71 @@ export const WaiterPanel = () => {
             </div>
         )}
 
-        <div className="glass-panel rounded-2xl overflow-hidden flex-1 flex flex-col border border-white/10">
+        {isManager && (
+            <>
+                <h3 className="font-bold text-xl text-white mt-8 mb-4">Comissões por Garçom</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {waiters.map(waiter => {
+                        const waiterLogs = commissionLogs.filter(l => l.waiterId === waiter.id);
+                        const waiterOrders = orders.filter(o => o.waiterId === waiter.id);
+                        const totals = calculateTotals(waiterLogs, waiterOrders);
+                        
+                        return (
+                            <div key={waiter.id} className="glass-panel p-5 rounded-2xl border border-white/10 hover:border-pier-neon/30 transition-colors">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center border border-white/10">
+                                        <Users size={20} className="text-slate-400" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-white uppercase">{waiter.name}</h4>
+                                        <p className="text-xs text-slate-400">Garçom</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-400">A Receber:</span>
+                                        <span className="text-pier-neon font-bold font-mono text-base">R$ {totals.pending.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm border-t border-white/5 pt-2">
+                                        <span className="text-slate-400">Hoje:</span>
+                                        <span className="text-pier-green font-bold font-mono">R$ {totals.daily.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-400">Semana:</span>
+                                        <span className="text-blue-400 font-bold font-mono">R$ {totals.weekly.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-400">Mês:</span>
+                                        <span className="text-purple-400 font-bold font-mono">R$ {totals.monthly.toFixed(2)}</span>
+                                    </div>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-white/10">
+                                    <button
+                                        onClick={() => {
+                                            setAdvanceWaiterId(waiter.id);
+                                            setIsAdvanceModalOpen(true);
+                                        }}
+                                        className="w-full text-center py-2 text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg transition-colors border border-white/5 uppercase"
+                                    >
+                                        Lançar Vale
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </>
+        )}
+
+        <div className="glass-panel rounded-2xl overflow-hidden border border-white/10 mt-8">
             <div className="p-4 border-b border-white/10 bg-slate-900/50 flex justify-between items-center">
                 <h3 className="font-bold text-lg text-white flex items-center gap-2">
                     <Clock size={18} className="text-slate-400" /> Histórico de Lançamentos
                 </h3>
                 <span className="text-xs text-slate-500 bg-white/5 px-2 py-1 rounded">Últimos lançamentos</span>
             </div>
-            <div className="overflow-y-auto flex-1">
+            <div className="overflow-x-auto w-full">
                 <table className="w-full text-left">
                     <thead className="bg-slate-900/80 text-slate-400 text-xs uppercase tracking-wider sticky top-0 z-10 backdrop-blur-md">
                         <tr>
