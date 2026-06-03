@@ -77,14 +77,36 @@ CREATE TABLE public.order_items (
 -- Adicionando a FK cruzada em mesas (current_order_id)
 ALTER TABLE public.tables ADD CONSTRAINT fk_current_order FOREIGN KEY (current_order_id) REFERENCES public.orders(id) ON DELETE SET NULL;
 
--- Log de Comissões
+-- Logs de Itens Apagados (Opcional, mas util se quiser relacional)
+CREATE TABLE public.deleted_item_logs (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  order_id uuid REFERENCES public.orders(id) ON DELETE CASCADE NOT NULL,
+  product_id uuid REFERENCES public.products(id) ON DELETE RESTRICT NOT NULL,
+  product_name text NOT NULL,
+  quantity integer NOT NULL,
+  deleted_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  deleted_by_user_id text,
+  deleted_by_user_name text
+);
+
+-- Tabela de Clientes
+CREATE TABLE public.customers (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  name text NOT NULL,
+  phone text,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Log de Comissões e Vales
 CREATE TABLE public.commission_logs (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   waiter_id uuid REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-  order_id uuid REFERENCES public.orders(id) ON DELETE CASCADE NOT NULL,
+  order_id uuid REFERENCES public.orders(id) ON DELETE CASCADE, -- removido NOT NULL para permitir Vales gerais
   amount numeric(10,2) NOT NULL,
   date timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-  status text NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PAID'))
+  status text NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PAID')),
+  type text DEFAULT 'COMMISSION' CHECK (type IN ('COMMISSION', 'ADVANCE')),
+  description text
 );
 
 -- ==========================================
@@ -108,6 +130,8 @@ ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tables ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.deleted_item_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.commission_logs ENABLE ROW LEVEL SECURITY;
 
 -- Políticas Simples (permitindo todas as operações autenticadas inicialmente)
@@ -118,6 +142,8 @@ CREATE POLICY "Permitir leitura/escrita anonima para testes" ON public.products 
 CREATE POLICY "Permitir leitura/escrita anonima para testes" ON public.tables FOR ALL USING (true);
 CREATE POLICY "Permitir leitura/escrita anonima para testes" ON public.orders FOR ALL USING (true);
 CREATE POLICY "Permitir leitura/escrita anonima para testes" ON public.order_items FOR ALL USING (true);
+CREATE POLICY "Permitir leitura/escrita anonima para testes" ON public.deleted_item_logs FOR ALL USING (true);
+CREATE POLICY "Permitir leitura/escrita anonima para testes" ON public.customers FOR ALL USING (true);
 CREATE POLICY "Permitir leitura/escrita anonima para testes" ON public.commission_logs FOR ALL USING (true);
 
 -- Tabela de Despesas
