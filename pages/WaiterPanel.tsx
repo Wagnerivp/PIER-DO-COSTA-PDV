@@ -169,17 +169,6 @@ export const WaiterPanel = () => {
                                     <div className="flex items-center gap-1">
                                         <button 
                                             onClick={() => {
-                                                if (window.confirm(`Deseja realmente zerar (excluir TODOS os valores e comissões) do garçom ${waiter.name}?`)) {
-                                                    resetWaiterCommissions(waiter.id);
-                                                }
-                                            }}
-                                            className="p-1.5 text-slate-500 hover:text-orange-400 hover:bg-orange-400/10 rounded-lg transition-colors"
-                                            title="Zerar Valores do Garçom"
-                                        >
-                                            <DollarSign size={16} />
-                                        </button>
-                                        <button 
-                                            onClick={() => {
                                                 const newName = window.prompt("Editar nome do garçom:", waiter.name);
                                                 if (newName) {
                                                     updateUser({ ...waiter, name: newName });
@@ -222,15 +211,25 @@ export const WaiterPanel = () => {
                                         <span className="text-purple-400 font-bold font-mono">R$ {totals.monthly.toFixed(2)}</span>
                                     </div>
                                 </div>
-                                <div className="mt-4 pt-4 border-t border-white/10">
+                                <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-white/10">
                                     <button
                                         onClick={() => {
                                             setAdvanceWaiterId(waiter.id);
                                             setIsAdvanceModalOpen(true);
                                         }}
-                                        className="w-full text-center py-2 text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg transition-colors border border-white/5 uppercase"
+                                        className="w-full text-center py-2 text-[10px] sm:text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg transition-colors border border-white/5 uppercase"
                                     >
                                         Lançar Vale
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (window.confirm(`Deseja realmente ZERAR TODOS os valores e comissões lançadas para o garçom ${waiter.name}?`)) {
+                                                resetWaiterCommissions(waiter.id);
+                                            }
+                                        }}
+                                        className="w-full text-center py-2 text-[10px] sm:text-xs font-bold bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors border border-red-500/20 uppercase"
+                                    >
+                                        Zerar Valores
                                     </button>
                                 </div>
                             </div>
