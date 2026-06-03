@@ -4,7 +4,9 @@ import { Expense } from '../types';
 import { DollarSign, Plus, Trash2, TrendingUp, TrendingDown, Package, Users, Settings, Droplets, Edit2 } from 'lucide-react';
 
 export const Finance = () => {
-  const { orders, expenses, addExpense, updateExpense, removeExpense, products, commissionLogs, users, currentUser } = useApp();
+  const { orders, expenses, addExpense, updateExpense, removeExpense, products, commissionLogs, users, currentUser, resetSystem } = useApp();
+  const [resetPin, setResetPin] = useState('');
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
   const isManager = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
 
@@ -100,7 +102,17 @@ export const Finance = () => {
 
   return (
     <div className="space-y-6 animate-fade-in relative pb-10 max-w-7xl mx-auto">
-        <h2 className="text-3xl font-bold text-white">Gestão Financeira</h2>
+        <div className="flex justify-between items-center">
+            <h2 className="text-3xl font-bold text-white">Gestão Financeira</h2>
+            {isManager && (
+                <button 
+                    onClick={() => setIsResetModalOpen(true)}
+                    className="bg-red-500/10 text-red-500 border border-red-500/30 font-bold px-4 py-2 rounded-xl text-sm hover:bg-red-500 hover:text-white transition-all uppercase tracking-wider flex items-center gap-2"
+                >
+                    <Trash2 size={16} /> Zerar Sistema
+                </button>
+            )}
+        </div>
         
         {/* Top Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -287,6 +299,54 @@ export const Finance = () => {
                 </div>
             </div>
         </div>
+
+        {isResetModalOpen && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+                <div className="bg-slate-900 border border-red-500/30 p-8 rounded-2xl w-full max-w-md shadow-2xl">
+                    <h3 className="text-2xl font-bold text-red-400 mb-2 flex items-center gap-2">
+                        <Trash2 size={24} /> Resetar Sistema
+                    </h3>
+                    <p className="text-slate-300 mb-4 text-sm font-bold">
+                        Atenção! Esta ação irá apagar todas as vendas, despesas, comissões, faturamentos, lucro e caixa.
+                    </p>
+                    <p className="text-slate-400 mb-6 text-sm">
+                        Garçons e Cadastros serão mantidos. Para confirmar, digite a senha administrativa (0508):
+                    </p>
+                    <input 
+                        type="password" 
+                        value={resetPin}
+                        onChange={(e) => setResetPin(e.target.value)}
+                        placeholder="Senha"
+                        className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white text-center focus:outline-none focus:border-red-500 font-mono tracking-[0.5em] text-lg mb-6"
+                    />
+                    <div className="flex gap-4">
+                        <button 
+                            onClick={() => {
+                                setIsResetModalOpen(false);
+                                setResetPin('');
+                            }}
+                            className="flex-1 bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl transition-all font-bold"
+                        >
+                            Cancelar
+                        </button>
+                        <button 
+                            onClick={() => {
+                                if (resetSystem(resetPin)) {
+                                    alert('Sistema resetado com sucesso!');
+                                    setIsResetModalOpen(false);
+                                    setResetPin('');
+                                } else {
+                                    alert('Senha incorreta!');
+                                }
+                            }}
+                            className="flex-1 bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500 hover:text-white py-3 rounded-xl transition-all font-bold"
+                        >
+                            Confirmar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 };

@@ -40,6 +40,8 @@ interface AppContextData {
   addExpense: (expense: Expense) => void;
   updateExpense: (expense: Expense) => void;
   removeExpense: (expenseId: string) => void;
+  resetSystem: (pin: string) => boolean;
+  resetWaiterCommissions: (waiterId: string) => void;
   
   // User Management
   addUser: (user: User) => void;
@@ -631,12 +633,29 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const removeExpense = (expenseId: string) => {
     setExpenses(prev => prev.filter(e => e.id !== expenseId));
   };
+  
+  const resetSystem = (pin: string) => {
+    if (pin === '0508') { // Default admin pin
+      setOrders([]);
+      setCommissionLogs([]);
+      setExpenses([]);
+      setTables(INITIAL_TABLES);
+      closeRegister(); // This resets the register open state and balance
+      // We keep users, products, customers.
+      return true;
+    }
+    return false;
+  };
+
+  const resetWaiterCommissions = (waiterId: string) => {
+    setCommissionLogs(prev => prev.filter(l => l.waiterId !== waiterId));
+  };
 
   return (
     <AppContext.Provider value={{
       currentUser, login, directLogin, logout, users, products, tables, orders, customers, commissionLogs, expenses, isRegisterOpen, registerBalance,
       openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payCommission, updateCommission, deleteCommission, addAdvance, processDirectSale, deleteOrder,
-      addUser, updateUser, removeUser, addExpense, updateExpense, removeExpense, addCustomer, updateCustomer, removeCustomer
+      addUser, updateUser, removeUser, addExpense, updateExpense, removeExpense, addCustomer, updateCustomer, removeCustomer, resetSystem, resetWaiterCommissions
     }}>
       {children}
     </AppContext.Provider>

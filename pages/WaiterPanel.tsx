@@ -3,7 +3,7 @@ import { useApp } from '../services/AppContext';
 import { DollarSign, CheckCircle, Clock, TrendingUp, Filter, Users, MinusSquare, X, Trash2, Edit2 } from 'lucide-react';
 
 export const WaiterPanel = () => {
-  const { currentUser, commissionLogs, orders, users, addAdvance, deleteCommission, updateCommission, removeUser, updateUser } = useApp();
+  const { currentUser, commissionLogs, orders, users, addAdvance, deleteCommission, updateCommission, removeUser, updateUser, resetWaiterCommissions } = useApp();
   const [selectedWaiterFilter, setSelectedWaiterFilter] = useState<string>('ALL');
   
   // Advance Modal State
@@ -167,6 +167,17 @@ export const WaiterPanel = () => {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1">
+                                        <button 
+                                            onClick={() => {
+                                                if (window.confirm(`Deseja realmente zerar (excluir TODOS os valores e comissões) do garçom ${waiter.name}?`)) {
+                                                    resetWaiterCommissions(waiter.id);
+                                                }
+                                            }}
+                                            className="p-1.5 text-slate-500 hover:text-orange-400 hover:bg-orange-400/10 rounded-lg transition-colors"
+                                            title="Zerar Valores do Garçom"
+                                        >
+                                            <DollarSign size={16} />
+                                        </button>
                                         <button 
                                             onClick={() => {
                                                 const newName = window.prompt("Editar nome do garçom:", waiter.name);
