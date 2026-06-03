@@ -1,7 +1,7 @@
 import React, { PropsWithChildren } from 'react';
 import { useApp } from '../services/AppContext';
-import { LayoutDashboard, Armchair, Coffee, Users, LogOut, Settings, DollarSign, Zap, Wallet, TrendingUp } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { LayoutDashboard, Armchair, Coffee, Users, LogOut, Settings, DollarSign, Zap, Wallet, TrendingUp, ShoppingCart } from 'lucide-react';
 
 export const Layout = ({ children }: PropsWithChildren) => {
   const { currentUser, logout } = useApp();
@@ -47,6 +47,10 @@ export const Layout = ({ children }: PropsWithChildren) => {
                 <Link to="/products" className={`px-4 lg:px-6 py-4 flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-1 lg:gap-4 transition-all min-w-[70px] snap-center ${isActive('/products')}`}>
                     <Coffee size={22} className="w-[20px] h-[20px] lg:w-[22px] lg:h-[22px]" />
                     <span className="text-[10px] lg:text-base font-medium">Prod.</span>
+                </Link>
+                <Link to="/purchases" className={`px-4 lg:px-6 py-4 flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-1 lg:gap-4 transition-all min-w-[70px] snap-center ${isActive('/purchases')}`}>
+                    <ShoppingCart size={22} className="w-[20px] h-[20px] lg:w-[22px] lg:h-[22px]" />
+                    <span className="text-[10px] lg:text-base font-medium">Compras</span>
                 </Link>
                 <Link to="/finance" className={`px-4 lg:px-6 py-4 flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-1 lg:gap-4 transition-all min-w-[70px] snap-center ${isActive('/finance')}`}>
                     <TrendingUp size={22} className="w-[20px] h-[20px] lg:w-[22px] lg:h-[22px]" />

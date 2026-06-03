@@ -13,6 +13,8 @@ import { Finance } from './pages/Finance';
 import { Team } from './pages/Team';
 import { Customers } from './pages/Customers';
 
+import { Purchases } from './pages/Purchases';
+
 const AppRoutes = () => {
   const { currentUser } = useApp();
 
@@ -28,6 +30,7 @@ const AppRoutes = () => {
         <Route path="/fast-sale" element={<FastSale />} />
         <Route path="/cash-register" element={<CashRegister />} />
         <Route path="/products" element={<Products />} />
+        <Route path="/purchases" element={<Purchases />} />
         <Route path="/finance" element={<Finance />} />
         <Route path="/team" element={<Team />} />
         <Route path="/commissions" element={<WaiterPanel />} />

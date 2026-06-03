@@ -23,6 +23,7 @@ export interface Product {
   stock: number;
   image?: string;
   description?: string;
+  lastStockUpdate?: Date;
 }
 
 export interface Customer {
@@ -84,6 +85,18 @@ export interface CommissionLog {
   status: 'PENDING' | 'PAID';
   type?: 'COMMISSION' | 'ADVANCE';
   description?: string;
+}
+
+export type PurchaseSupplier = 'COZINHA' | 'AMBEV' | 'HEINEKEN' | 'DEPOSITO' | 'OUTROS';
+
+export interface Purchase {
+  id: string;
+  description: string;
+  amount: number;
+  supplier: PurchaseSupplier;
+  date: Date;
+  paymentDate: Date;
+  status: 'PENDING' | 'PAID';
 }
 
 export type ExpenseCategory = 'MAINTENANCE' | 'CLEANING' | 'SALARY' | 'SUPPLIES' | 'OTHER';

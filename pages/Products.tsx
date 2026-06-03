@@ -5,9 +5,9 @@ import { Trash2, Plus, Package, Search, Edit3, Save, X } from 'lucide-react';
 import { Product } from '../types';
 
 export const Products = () => {
-  const { products, addProduct, updateProduct, removeProduct, currentUser } = useApp();
+  const { products, addProduct, updateProduct, removeProduct, currentUser, orders } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Mobile View State
   const [activeTab, setActiveTab] = useState<'form' | 'list'>('list');
 
@@ -33,13 +33,17 @@ export const Products = () => {
     if (!name || !price || !cost) return;
 
     if (editingId) {
+        const existing = products.find(p => p.id === editingId);
+        const stockDiff = parseInt(stock) - (existing?.stock || 0);
+        
         const updated: Product = {
             id: editingId,
             name,
             price: parseFloat(price),
             cost: parseFloat(cost),
             categoryId: category,
-            stock: parseInt(stock)
+            stock: parseInt(stock),
+            lastStockUpdate: stockDiff !== 0 ? new Date() : existing?.lastStockUpdate
         };
         updateProduct(updated);
         setEditingId(null);
@@ -51,7 +55,8 @@ export const Products = () => {
             price: parseFloat(price),
             cost: parseFloat(cost),
             categoryId: category,
-            stock: parseInt(stock)
+            stock: parseInt(stock),
+            lastStockUpdate: new Date()
         };
         addProduct(newProduct);
         showToast('Produto cadastrado!');
@@ -76,7 +81,6 @@ export const Products = () => {
       setCost(product.cost?.toString() || '0');
       setStock(product.stock?.toString() || '0');
       setCategory(product.categoryId);
-      // Switch to form view on mobile so user can see what they are editing
       setActiveTab('form');
   };
 
@@ -85,7 +89,49 @@ export const Products = () => {
     setActiveTab('list');
   };
 
-  const filtered = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  // Calculate monthly sales per product
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const monthlySalesMap: Record<string, number> = {};
+  
+  orders.forEach(o => {
+      // Only count CLOSED orders for actual sales, or OPEN too? Let's say CLOSED.
+      if (o.status === 'CLOSED' && o.closedAt && new Date(o.closedAt) >= startOfMonth) {
+          o.items.forEach(item => {
+              monthlySalesMap[item.productId] = (monthlySalesMap[item.productId] || 0) + item.quantity;
+          });
+      }
+  });
+
+  const getSubcategoryWeight = (name: string) => {
+      const lower = name.toLowerCase();
+      if (lower.includes('600') || lower.includes('600ml')) return 1;
+      if (lower.includes('latão') || lower.includes('latao') || lower.includes('473')) return 2;
+      if (lower.includes('long neck') || lower.includes('longneck') || lower.includes('330')) return 3;
+      return 4; // Outros
+  };
+
+  const sortedProducts = [...products].sort((a, b) => {
+      // 1. Categoria
+      const catOrderA = CATEGORIES.findIndex(c => c.id === a.categoryId);
+      const catOrderB = CATEGORIES.findIndex(c => c.id === b.categoryId);
+      if (catOrderA !== catOrderB) return catOrderA - catOrderB;
+      
+      // 2. Subcategoria (600, Latao, Long Neck)
+      const subA = getSubcategoryWeight(a.name);
+      const subB = getSubcategoryWeight(b.name);
+      if (subA !== subB) return subA - subB;
+
+      // 3. Ordem alfabética
+      const nameCompare = a.name.localeCompare(b.name);
+      if (nameCompare !== 0) return nameCompare;
+
+      // 4. Data da última atualização de estoque
+      const d1 = a.lastStockUpdate ? new Date(a.lastStockUpdate).getTime() : 0;
+      const d2 = b.lastStockUpdate ? new Date(b.lastStockUpdate).getTime() : 0;
+      return d2 - d1; // newest first
+  });
+
+  const filtered = sortedProducts.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   if (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'MANAGER') {
       return (
@@ -279,55 +325,77 @@ export const Products = () => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-900/80 text-slate-400 text-sm sticky top-0 backdrop-blur-md z-10">
-                            <tr>
-                                <th className="p-3 rounded-tl-lg">Produto</th>
-                                <th className="hidden sm:table-cell p-3">Categoria</th>
-                                <th className="p-3">Preço</th>
-                                <th className="hidden sm:table-cell p-3">Estoque</th>
-                                <th className="p-3 rounded-tr-lg text-right">Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                            {filtered.map(p => {
-                                const cat = CATEGORIES.find(c => c.id === p.categoryId);
-                                const isEditing = editingId === p.id;
-                                return (
-                                    <tr key={p.id} className={`transition-colors group ${isEditing ? 'bg-pier-neon/10 border-l-2 border-pier-neon' : 'hover:bg-white/5'}`}>
-                                        <td className="p-3">
-                                            <p className="font-medium text-white">{p.name}</p>
-                                            <p className="sm:hidden text-xs text-slate-500">{cat?.name} • Est: {p.stock}</p>
-                                        </td>
-                                        <td className="hidden sm:table-cell p-3 text-slate-400 text-sm">
-                                            <span className="flex items-center gap-2">{cat?.icon} {cat?.name}</span>
-                                        </td>
-                                        <td className="p-3 text-pier-neon font-bold font-mono">R$ {p.price.toFixed(2)}</td>
-                                        <td className="hidden sm:table-cell p-3 text-slate-300">{p.stock}</td>
-                                        <td className="p-3 text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <button 
-                                                    onClick={() => handleEdit(p)}
-                                                    className={`p-2 rounded-lg transition-all flex items-center gap-2 ${isEditing ? 'bg-pier-neon text-pier-900 shadow-md' : 'text-blue-400 hover:bg-blue-500/10 bg-white/5 border border-white/5'}`}
-                                                    title="Editar"
-                                                >
-                                                    <Edit3 size={16} /> 
-                                                    <span className="hidden sm:inline text-xs font-bold">{isEditing ? 'Editando' : 'Editar'}</span>
-                                                </button>
-                                                <button 
-                                                    onClick={() => setProductToDelete(p.id)}
-                                                    className="p-2 text-red-400 hover:bg-red-500/10 bg-white/5 border border-white/5 rounded-lg transition-colors"
-                                                    title="Excluir"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )
-                            })}
-                        </tbody>
-                    </table>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {filtered.map(p => {
+                            const cat = CATEGORIES.find(c => c.id === p.categoryId);
+                            const isEditing = editingId === p.id;
+                            const profit = Math.max(0, p.price - (p.cost || 0));
+                            const monthlySales = monthlySalesMap[p.id] || 0;
+                            // Suggest to buy enough for at least 1 month of stock based on sales
+                            const suggestedPurchase = Math.max(0, monthlySales - p.stock);
+
+                            return (
+                                <div key={p.id} className={`p-5 rounded-2xl border transition-all flex flex-col gap-4 ${isEditing ? 'bg-pier-neon/10 border-pier-neon' : 'glass-card border-white/10 hover:border-pier-neon/50'}`}>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h4 className="font-bold text-lg text-white">{p.name}</h4>
+                                            <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
+                                                <span>{cat?.icon}</span> {cat?.name} {p.lastStockUpdate ? `• Atualizado: ${new Date(p.lastStockUpdate).toLocaleDateString('pt-BR')}` : ''}
+                                            </p>
+                                        </div>
+                                        <div className="flex bg-slate-900 border border-white/10 rounded-lg overflow-hidden shrink-0">
+                                            <button 
+                                                onClick={() => handleEdit(p)}
+                                                className={`p-2 transition-colors ${isEditing ? 'bg-pier-neon text-pier-900' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
+                                                title="Editar"
+                                            >
+                                                <Edit3 size={16} />
+                                            </button>
+                                            <button 
+                                                onClick={() => setProductToDelete(p.id)}
+                                                className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/20 transition-colors border-l border-white/10"
+                                                title="Excluir"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2 text-sm bg-black/20 p-3 rounded-xl border border-white/5">
+                                        <div>
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold">Custo</p>
+                                            <p className="text-white font-mono">R$ {(p.cost || 0).toFixed(2)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold">Venda</p>
+                                            <p className="text-pier-neon font-bold font-mono">R$ {p.price.toFixed(2)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold">Lucro</p>
+                                            <p className="text-pier-green font-bold font-mono">R$ {profit.toFixed(2)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold">Estoque / Vendas</p>
+                                            <p className="text-white font-mono">
+                                                <span className={p.stock < 10 ? 'text-red-400' : ''}>{p.stock}</span> / {monthlySales}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {suggestedPurchase > 0 ? (
+                                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-3 flex items-center justify-between">
+                                            <p className="text-xs text-orange-400 font-medium">Estoque baixo para a demanda do mês!</p>
+                                            <p className="text-xs font-bold text-orange-400 bg-orange-400/20 px-2 py-1 rounded-md">Comprar +{suggestedPurchase}</p>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-pier-green/5 border border-pier-green/10 rounded-xl p-3 flex items-center justify-center">
+                                            <p className="text-xs text-pier-green font-medium">Estoque adequado 🚀</p>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
                     {filtered.length === 0 && (
                         <div className="flex flex-col items-center justify-center p-12 text-slate-500 gap-2">
                             <Search size={32} className="opacity-20" />

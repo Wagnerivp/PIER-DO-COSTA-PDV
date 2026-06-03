@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, PropsWithChildren } from 'react';
-import { User, Product, Table, Order, CommissionLog, OrderItem, Expense, DeletedItemLog, Customer } from '../types';
+import { User, Product, Table, Order, CommissionLog, OrderItem, Expense, DeletedItemLog, Customer, Purchase } from '../types';
 import { INITIAL_USERS, INITIAL_PRODUCTS, INITIAL_TABLES } from '../constants';
 import { supabase } from './supabase';
 
@@ -17,8 +17,13 @@ interface AppContextData {
   expenses: Expense[];
   isRegisterOpen: boolean;
   registerBalance: number;
+  purchases: Purchase[];
   
   // Actions
+  addPurchase: (purchase: Purchase) => void;
+  updatePurchase: (purchase: Purchase) => void;
+  removePurchase: (purchaseId: string) => void;
+  
   openRegister: (amount: number) => void;
   closeRegister: () => void;
   addProduct: (product: Product) => void;
@@ -71,6 +76,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [commissionLogs, setCommissionLogs] = useState<CommissionLog[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
 
   const lastCloudStateRef = useRef<string | null>(null);
   const lastLocalStateRef = useRef<string | null>(null);
@@ -105,6 +111,10 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       if (parsed.expenses) {
           const mappedExpenses = parsed.expenses.map((e: any) => ({...e, date: new Date(e.date)}));
           setExpenses(prev => JSON.stringify(prev) === JSON.stringify(mappedExpenses) ? prev : mappedExpenses);
+      }
+      if (parsed.purchases) {
+          const mappedPurchases = parsed.purchases.map((p: any) => ({...p, date: new Date(p.date), paymentDate: new Date(p.paymentDate)}));
+          setPurchases(prev => JSON.stringify(prev) === JSON.stringify(mappedPurchases) ? prev : mappedPurchases);
       }
       if (parsed.orders) {
           const mappedOrders = parsed.orders.map((o: any) => ({
@@ -144,6 +154,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
               customers: parsed.customers,
               commissionLogs: parsed.commissionLogs,
               expenses: parsed.expenses,
+              purchases: parsed.purchases,
           };
           lastCloudStateRef.current = JSON.stringify(stripped);
       }
@@ -216,7 +227,8 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       orders,
       customers,
       commissionLogs,
-      expenses
+      expenses,
+      purchases
     };
     
     const cloudSignature = JSON.stringify(stripped);
@@ -264,7 +276,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         clearTimeout(timeout);
         pendingSyncCount = Math.max(0, pendingSyncCount - 1);
     };
-  }, [currentUser, isRegisterOpen, registerBalance, users, products, tables, orders, commissionLogs, expenses]);
+  }, [currentUser, isRegisterOpen, registerBalance, users, products, tables, orders, commissionLogs, expenses, purchases]);
 
 
   const login = (pin: string) => {
@@ -621,6 +633,19 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     return false;
   };
 
+  // Purchase Management
+  const addPurchase = (purchase: Purchase) => {
+    setPurchases(prev => [...prev, purchase]);
+  };
+  
+  const updatePurchase = (updatedPurchase: Purchase) => {
+    setPurchases(prev => prev.map(p => p.id === updatedPurchase.id ? updatedPurchase : p));
+  };
+
+  const removePurchase = (purchaseId: string) => {
+    setPurchases(prev => prev.filter(p => p.id !== purchaseId));
+  };
+
   // Expense Management
   const addExpense = (expense: Expense) => {
     setExpenses(prev => [...prev, expense]);
@@ -639,6 +664,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       setOrders([]);
       setCommissionLogs([]);
       setExpenses([]);
+      setPurchases([]);
       setTables(INITIAL_TABLES);
       closeRegister(); // This resets the register open state and balance
       // We keep users, products, customers.
@@ -653,9 +679,9 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
   return (
     <AppContext.Provider value={{
-      currentUser, login, directLogin, logout, users, products, tables, orders, customers, commissionLogs, expenses, isRegisterOpen, registerBalance,
+      currentUser, login, directLogin, logout, users, products, tables, orders, customers, commissionLogs, expenses, purchases, isRegisterOpen, registerBalance,
       openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payCommission, updateCommission, deleteCommission, addAdvance, processDirectSale, deleteOrder,
-      addUser, updateUser, removeUser, addExpense, updateExpense, removeExpense, addCustomer, updateCustomer, removeCustomer, resetSystem, resetWaiterCommissions
+      addUser, updateUser, removeUser, addExpense, updateExpense, removeExpense, addPurchase, updatePurchase, removePurchase, addCustomer, updateCustomer, removeCustomer, resetSystem, resetWaiterCommissions
     }}>
       {children}
     </AppContext.Provider>
