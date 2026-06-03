@@ -1,29 +1,52 @@
 import React, { useState } from 'react';
 import { useApp } from '../services/AppContext';
 import { Expense } from '../types';
-import { DollarSign, Plus, Trash2, TrendingUp, TrendingDown, Package, Users, Settings, Droplets } from 'lucide-react';
+import { DollarSign, Plus, Trash2, TrendingUp, TrendingDown, Package, Users, Settings, Droplets, Edit2 } from 'lucide-react';
 
 export const Finance = () => {
-  const { orders, expenses, addExpense, removeExpense, products, commissionLogs, users } = useApp();
+  const { orders, expenses, addExpense, updateExpense, removeExpense, products, commissionLogs, users, currentUser } = useApp();
+
+  const isManager = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<Expense['category']>('MAINTENANCE');
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!description || !amount) return;
 
-    addExpense({
-      id: `exp-${Date.now()}`,
-      description,
-      amount: parseFloat(amount),
-      category,
-      date: new Date()
-    });
+    if (editingExpenseId) {
+      const existing = expenses.find(exp => exp.id === editingExpenseId);
+      if (existing) {
+        updateExpense({
+          ...existing,
+          description,
+          amount: parseFloat(amount),
+          category
+        });
+      }
+      setEditingExpenseId(null);
+    } else {
+      addExpense({
+        id: `exp-${Date.now()}`,
+        description,
+        amount: parseFloat(amount),
+        category,
+        date: new Date()
+      });
+    }
 
     setDescription('');
     setAmount('');
+  };
+
+  const handleEdit = (exp: Expense) => {
+    setEditingExpenseId(exp.id);
+    setDescription(exp.description);
+    setAmount(exp.amount.toString());
+    setCategory(exp.category);
   };
 
   // Metrics Calculation
@@ -172,8 +195,17 @@ export const Finance = () => {
                     </div>
 
                     <button type="submit" className="w-full bg-gradient-to-r from-pier-neon to-pier-green text-pier-900 font-bold py-3 rounded-xl transition-all shadow-lg hover:shadow-pier-neon/20 mt-4">
-                        Registrar Despesa
+                        {editingExpenseId ? 'Atualizar Despesa' : 'Registrar Despesa'}
                     </button>
+                    {editingExpenseId && (
+                        <button type="button" onClick={() => {
+                            setEditingExpenseId(null);
+                            setDescription('');
+                            setAmount('');
+                        }} className="w-full bg-transparent border border-white/20 text-slate-300 font-bold py-2 rounded-xl mt-2 hover:bg-white/5 transition-all">
+                            Cancelar Edição
+                        </button>
+                    )}
                 </form>
 
                 <div className="mt-8 pt-6 border-t border-white/10">
@@ -224,13 +256,24 @@ export const Finance = () => {
                                     </td>
                                     <td className="p-3 font-mono font-bold text-red-400">R$ {exp.amount.toFixed(2)}</td>
                                     <td className="p-3 text-right">
-                                        <button 
-                                            onClick={() => removeExpense(exp.id)}
-                                            className="text-slate-500 hover:text-red-400 transition-colors p-2"
-                                            title="Excluir"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
+                                        {isManager && (
+                                            <>
+                                                <button 
+                                                    onClick={() => handleEdit(exp)}
+                                                    className="text-slate-500 hover:text-pier-neon transition-colors p-2"
+                                                    title="Editar"
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => removeExpense(exp.id)}
+                                                    className="text-slate-500 hover:text-red-400 transition-colors p-2"
+                                                    title="Excluir"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </>
+                                        )}
                                     </td>
                                 </tr>
                             ))}

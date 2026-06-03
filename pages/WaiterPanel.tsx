@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useApp } from '../services/AppContext';
-import { DollarSign, CheckCircle, Clock, TrendingUp, Filter, Users, MinusSquare, X, Trash2 } from 'lucide-react';
+import { DollarSign, CheckCircle, Clock, TrendingUp, Filter, Users, MinusSquare, X, Trash2, Edit2 } from 'lucide-react';
 
 export const WaiterPanel = () => {
-  const { currentUser, commissionLogs, orders, users, addAdvance, deleteCommission } = useApp();
+  const { currentUser, commissionLogs, orders, users, addAdvance, deleteCommission, updateCommission, removeUser, updateUser } = useApp();
   const [selectedWaiterFilter, setSelectedWaiterFilter] = useState<string>('ALL');
   
   // Advance Modal State
@@ -156,13 +156,40 @@ export const WaiterPanel = () => {
                         
                         return (
                             <div key={waiter.id} className="glass-panel p-5 rounded-2xl border border-white/10 hover:border-pier-neon/30 transition-colors">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center border border-white/10">
-                                        <Users size={20} className="text-slate-400" />
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center border border-white/10">
+                                            <Users size={20} className="text-slate-400" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-white uppercase">{waiter.name}</h4>
+                                            <p className="text-xs text-slate-400">Garçom</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h4 className="font-bold text-white uppercase">{waiter.name}</h4>
-                                        <p className="text-xs text-slate-400">Garçom</p>
+                                    <div className="flex items-center gap-1">
+                                        <button 
+                                            onClick={() => {
+                                                const newName = window.prompt("Editar nome do garçom:", waiter.name);
+                                                if (newName) {
+                                                    updateUser({ ...waiter, name: newName });
+                                                }
+                                            }}
+                                            className="p-1.5 text-slate-500 hover:text-pier-neon hover:bg-pier-neon/10 rounded-lg transition-colors"
+                                            title="Editar Garçom"
+                                        >
+                                            <Edit2 size={16} />
+                                        </button>
+                                        <button 
+                                            onClick={() => {
+                                                if (window.confirm(`Deseja realmente excluir o garçom ${waiter.name}?`)) {
+                                                    removeUser(waiter.id);
+                                                }
+                                            }}
+                                            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                                            title="Excluir Garçom"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
                                     </div>
                                 </div>
                                 
@@ -256,6 +283,18 @@ export const WaiterPanel = () => {
                                         </td>
                                         {isManager && (
                                             <td className="p-4 text-center">
+                                                <button
+                                                    onClick={() => {
+                                                        const newVal = window.prompt('Digite o novo valor:', log.amount.toString());
+                                                        if (newVal && !isNaN(parseFloat(newVal))) {
+                                                            updateCommission(log.id, { amount: parseFloat(newVal) });
+                                                        }
+                                                    }}
+                                                    className="p-1.5 text-slate-500 hover:text-pier-neon hover:bg-pier-neon/10 rounded-lg transition-colors mr-1"
+                                                    title="Editar Lançamento"
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
                                                 <button
                                                     onClick={() => {
                                                         if (window.confirm('Deseja realmente excluir este lançamento?')) {

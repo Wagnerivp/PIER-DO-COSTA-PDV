@@ -32,11 +32,13 @@ interface AppContextData {
   removeFromOrder: (tableId: string, productId: string, removeAll?: boolean) => void;
   closeAccount: (tableId: string, paymentMethod: any, includeServiceFee: boolean) => void;
   payCommission: (logId: string) => void;
+  updateCommission: (logId: string, updates: Partial<CommissionLog>) => void;
   deleteCommission: (logId: string) => void;
   addAdvance: (waiterId: string, amount: number, description: string) => void;
   processDirectSale: (items: {product: Product, quantity: number, total: number}[], paymentMethod: string) => void;
   deleteOrder: (orderId: string, pin: string) => boolean;
   addExpense: (expense: Expense) => void;
+  updateExpense: (expense: Expense) => void;
   removeExpense: (expenseId: string) => void;
   
   // User Management
@@ -540,6 +542,10 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     setCommissionLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'PAID' } : l));
   };
 
+  const updateCommission = (logId: string, updates: Partial<CommissionLog>) => {
+    setCommissionLogs(prev => prev.map(l => l.id === logId ? { ...l, ...updates } : l));
+  };
+
   const deleteCommission = (logId: string) => {
     setCommissionLogs(prev => prev.filter(l => l.id !== logId));
   };
@@ -618,6 +624,10 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     setExpenses(prev => [...prev, expense]);
   };
   
+  const updateExpense = (updatedExpense: Expense) => {
+    setExpenses(prev => prev.map(e => e.id === updatedExpense.id ? updatedExpense : e));
+  };
+
   const removeExpense = (expenseId: string) => {
     setExpenses(prev => prev.filter(e => e.id !== expenseId));
   };
@@ -625,8 +635,8 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   return (
     <AppContext.Provider value={{
       currentUser, login, directLogin, logout, users, products, tables, orders, customers, commissionLogs, expenses, isRegisterOpen, registerBalance,
-      openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payCommission, deleteCommission, addAdvance, processDirectSale, deleteOrder,
-      addUser, updateUser, removeUser, addExpense, removeExpense, addCustomer, updateCustomer, removeCustomer
+      openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payCommission, updateCommission, deleteCommission, addAdvance, processDirectSale, deleteOrder,
+      addUser, updateUser, removeUser, addExpense, updateExpense, removeExpense, addCustomer, updateCustomer, removeCustomer
     }}>
       {children}
     </AppContext.Provider>
