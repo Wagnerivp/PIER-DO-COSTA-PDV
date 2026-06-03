@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useApp } from '../services/AppContext';
-import { DollarSign, CheckCircle, Clock, TrendingUp, Filter, Users, MinusSquare, X } from 'lucide-react';
+import { DollarSign, CheckCircle, Clock, TrendingUp, Filter, Users, MinusSquare, X, Trash2 } from 'lucide-react';
 
 export const WaiterPanel = () => {
-  const { currentUser, commissionLogs, orders, users, addAdvance } = useApp();
+  const { currentUser, commissionLogs, orders, users, addAdvance, deleteCommission } = useApp();
   const [selectedWaiterFilter, setSelectedWaiterFilter] = useState<string>('ALL');
   
   // Advance Modal State
@@ -83,9 +83,9 @@ export const WaiterPanel = () => {
                         onChange={(e) => setSelectedWaiterFilter(e.target.value)}
                         className="bg-transparent text-white text-sm outline-none px-2 py-1 min-w-[150px]"
                     >
-                        <option value="ALL">Todos os Garçons</option>
+                        <option value="ALL" className="text-black">Todos os Garçons</option>
                         {waiters.map(w => (
-                            <option key={w.id} value={w.id}>{w.name}</option>
+                            <option key={w.id} value={w.id} className="text-black">{w.name}</option>
                         ))}
                     </select>
                 </div>
@@ -218,6 +218,7 @@ export const WaiterPanel = () => {
                             <th className="p-4 font-medium">Pedido</th>
                             <th className="p-4 font-medium text-right">Valor</th>
                             <th className="p-4 font-medium text-center">Status</th>
+                            {isManager && <th className="p-4 font-medium text-center">Ações</th>}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5 text-sm">
@@ -253,6 +254,21 @@ export const WaiterPanel = () => {
                                                 </span>
                                             )}
                                         </td>
+                                        {isManager && (
+                                            <td className="p-4 text-center">
+                                                <button
+                                                    onClick={() => {
+                                                        if (window.confirm('Deseja realmente excluir este lançamento?')) {
+                                                            deleteCommission(log.id);
+                                                        }
+                                                    }}
+                                                    className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                                                    title="Excluir Lançamento"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </td>
+                                        )}
                                     </tr>
                                 );
                             })
@@ -286,9 +302,9 @@ export const WaiterPanel = () => {
                                 onChange={(e) => setAdvanceWaiterId(e.target.value)}
                                 className="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-red-400 transition-all"
                             >
-                                <option value="" disabled>Escolha um garçom...</option>
+                                <option value="" disabled className="text-black">Escolha um garçom...</option>
                                 {waiters.map(w => (
-                                    <option key={w.id} value={w.id}>{w.name}</option>
+                                    <option key={w.id} value={w.id} className="text-black">{w.name}</option>
                                 ))}
                             </select>
                         </div>

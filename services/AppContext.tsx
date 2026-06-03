@@ -32,6 +32,7 @@ interface AppContextData {
   removeFromOrder: (tableId: string, productId: string, removeAll?: boolean) => void;
   closeAccount: (tableId: string, paymentMethod: any, includeServiceFee: boolean) => void;
   payCommission: (logId: string) => void;
+  deleteCommission: (logId: string) => void;
   addAdvance: (waiterId: string, amount: number, description: string) => void;
   processDirectSale: (items: {product: Product, quantity: number, total: number}[], paymentMethod: string) => void;
   deleteOrder: (orderId: string, pin: string) => boolean;
@@ -539,6 +540,10 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     setCommissionLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'PAID' } : l));
   };
 
+  const deleteCommission = (logId: string) => {
+    setCommissionLogs(prev => prev.filter(l => l.id !== logId));
+  };
+
   const addAdvance = (waiterId: string, amount: number, description: string) => {
     const log: CommissionLog = {
       id: `adv-${Date.now()}`,
@@ -620,7 +625,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   return (
     <AppContext.Provider value={{
       currentUser, login, directLogin, logout, users, products, tables, orders, customers, commissionLogs, expenses, isRegisterOpen, registerBalance,
-      openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payCommission, addAdvance, processDirectSale, deleteOrder,
+      openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payCommission, deleteCommission, addAdvance, processDirectSale, deleteOrder,
       addUser, updateUser, removeUser, addExpense, removeExpense, addCustomer, updateCustomer, removeCustomer
     }}>
       {children}
