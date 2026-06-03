@@ -202,13 +202,13 @@ export const Products = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 overflow-hidden min-h-0">
             {/* Form Section */}
-            <div className={`glass-panel p-6 rounded-2xl h-fit overflow-y-auto ${activeTab === 'form' ? 'block' : 'hidden lg:block'}`}>
-                <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2 border-b border-white/10 pb-4">
+            <div className={`glass-panel p-6 rounded-2xl flex flex-col h-full overflow-y-auto scrollbar-thin ${activeTab === 'form' ? 'block' : 'hidden lg:flex'}`}>
+                <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2 border-b border-white/10 pb-4 shrink-0">
                     {editingId ? <Edit3 size={20} className="text-pier-neon" /> : <Plus size={20} className="text-pier-neon" />} 
                     {editingId ? 'Editar Produto' : 'Cadastrar Novo'}
                 </h3>
                 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4 shrink-0">
                     <div>
                         <label className="block text-sm text-slate-400 mb-1">Nome do Produto</label>
                         <input 
@@ -299,7 +299,7 @@ export const Products = () => {
                                 <X size={18} /> CANCELAR
                             </button>
                         )}
-                        <button className="flex-1 bg-gradient-to-r from-pier-neon to-pier-green hover:shadow-[0_0_15px_rgba(34,211,238,0.4)] text-pier-900 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2">
+                        <button type="submit" className="flex-1 bg-gradient-to-r from-pier-neon to-pier-green hover:shadow-[0_0_15px_rgba(34,211,238,0.4)] text-pier-900 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2">
                             <Save size={18} />
                             {editingId ? 'ATUALIZAR' : 'CADASTRAR'}
                         </button>
@@ -324,7 +324,7 @@ export const Products = () => {
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin">
+                <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin pb-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {filtered.map(p => {
                             const cat = CATEGORIES.find(c => c.id === p.categoryId);

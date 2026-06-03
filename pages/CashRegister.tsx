@@ -24,7 +24,7 @@ export const CashRegister = () => {
   const totalPix = closedOrders.filter(o => o.paymentMethod === 'PIX').reduce((sum, o) => sum + o.total, 0);
 
   const handleOpenRegister = () => {
-    const val = parseFloat(amountInput);
+    const val = parseFloat(amountInput.replace(',', '.'));
     if (!isNaN(val) && val >= 0) {
       openRegister(val);
       setAmountInput('');
@@ -158,7 +158,8 @@ export const CashRegister = () => {
             {!isRegisterOpen ? (
                 <div className="flex items-center gap-2">
                     <input 
-                        type="number" 
+                        type="text" 
+                        inputMode="decimal"
                         value={amountInput}
                         onChange={(e) => setAmountInput(e.target.value)}
                         placeholder="Fundo de Caixa"
