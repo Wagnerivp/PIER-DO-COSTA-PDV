@@ -19,6 +19,10 @@ export const Products = () => {
   const [category, setCategory] = useState(CATEGORIES[0].id);
   const [stock, setStock] = useState('100');
   
+  // Pack Calculator State
+  const [packCost, setPackCost] = useState('');
+  const [packQuantity, setPackQuantity] = useState('');
+
   // UI States
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
@@ -72,6 +76,8 @@ export const Products = () => {
     setCost('');
     setStock('100');
     setCategory(CATEGORIES[0].id);
+    setPackCost('');
+    setPackQuantity('');
   };
 
   const handleEdit = (product: Product) => {
@@ -81,7 +87,27 @@ export const Products = () => {
       setCost(product.cost?.toString() || '0');
       setStock(product.stock?.toString() || '0');
       setCategory(product.categoryId);
+      setPackCost('');
+      setPackQuantity('');
       setActiveTab('form');
+  };
+
+  const calculateUnitCost = (pc: string, pq: string) => {
+      const pcNum = parseFloat(pc.replace(',', '.'));
+      const pqNum = parseInt(pq, 10);
+      if (!isNaN(pcNum) && !isNaN(pqNum) && pqNum > 0) {
+          setCost((pcNum / pqNum).toFixed(2));
+      }
+  };
+
+  const handlePackCostChange = (val: string) => {
+      setPackCost(val);
+      calculateUnitCost(val, packQuantity);
+  };
+
+  const handlePackQuantityChange = (val: string) => {
+      setPackQuantity(val);
+      calculateUnitCost(packCost, val);
   };
 
   const handleCancelEdit = () => {
@@ -202,15 +228,28 @@ export const Products = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 overflow-hidden min-h-0">
             {/* Form Section */}
-            <div className={`glass-panel p-6 rounded-2xl flex flex-col h-full overflow-y-auto scrollbar-thin ${activeTab === 'form' ? 'block' : 'hidden lg:flex'}`}>
-                <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2 border-b border-white/10 pb-4 shrink-0">
-                    {editingId ? <Edit3 size={20} className="text-pier-neon" /> : <Plus size={20} className="text-pier-neon" />} 
-                    {editingId ? 'Editar Produto' : 'Cadastrar Novo'}
-                </h3>
-                
-                <form onSubmit={handleSubmit} className="space-y-4 shrink-0">
-                    <div>
-                        <label className="block text-sm text-slate-400 mb-1">Nome do Produto</label>
+            <div className={`glass-panel p-6 rounded-2xl flex flex-col h-full overflow-hidden ${activeTab === 'form' ? 'block' : 'hidden lg:flex'}`}>
+                <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden min-h-0">
+                    <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4 shrink-0">
+                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                            {editingId ? <Edit3 size={20} className="text-pier-neon" /> : <Plus size={20} className="text-pier-neon" />} 
+                            {editingId ? 'Editar Produto' : 'Cadastrar'}
+                        </h3>
+                        <div className="flex gap-2">
+                            {editingId && (
+                                <button type="button" onClick={handleCancelEdit} className="p-2 border border-red-500/30 text-red-500 rounded-lg hover:bg-red-500/10 transition-colors" title="Cancelar Edição">
+                                    <X size={20} />
+                                </button>
+                            )}
+                            <button type="submit" className="bg-gradient-to-r from-pier-neon to-pier-green text-pier-900 font-bold px-4 py-2 rounded-lg flex items-center gap-2 text-sm hover:shadow-[0_0_15px_rgba(34,211,238,0.4)] transition-all">
+                                <Save size={16} /> Salvar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-4 overflow-y-auto scrollbar-thin pr-2 pb-10 flex-1">
+                        <div>
+                            <label className="block text-sm text-slate-400 mb-1">Nome do Produto</label>
                         <input 
                             value={name}
                             onChange={e => setName(e.target.value)}
@@ -220,6 +259,33 @@ export const Products = () => {
                         />
                     </div>
                     
+                    <div className="bg-black/20 border border-white/10 rounded-xl p-4 space-y-3">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cálculo por Fardo / Caixa (Opcional)</p>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm text-slate-400 mb-1">Valor Total (R$)</label>
+                                <input 
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={packCost}
+                                    onChange={e => handlePackCostChange(e.target.value)}
+                                    className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-pier-neon focus:outline-none transition-all font-mono"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-slate-400 mb-1">Qtd. Unidades</label>
+                                <input 
+                                    type="number"
+                                    value={packQuantity}
+                                    onChange={e => handlePackQuantityChange(e.target.value)}
+                                    className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-pier-neon focus:outline-none transition-all font-mono"
+                                    placeholder="0"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm text-slate-400 mb-1">Custo (R$)</label>
@@ -288,21 +354,6 @@ export const Products = () => {
                             ))}
                         </div>
                     </div>
-
-                    <div className="flex gap-2 mt-6 pt-4 border-t border-white/10">
-                        {editingId && (
-                            <button 
-                                type="button"
-                                onClick={handleCancelEdit}
-                                className="flex-1 border border-red-500/30 text-red-400 font-bold py-3 rounded-xl hover:bg-red-500/10 transition-colors flex items-center justify-center gap-2"
-                            >
-                                <X size={18} /> CANCELAR
-                            </button>
-                        )}
-                        <button type="submit" className="flex-1 bg-gradient-to-r from-pier-neon to-pier-green hover:shadow-[0_0_15px_rgba(34,211,238,0.4)] text-pier-900 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2">
-                            <Save size={18} />
-                            {editingId ? 'ATUALIZAR' : 'CADASTRAR'}
-                        </button>
                     </div>
                 </form>
             </div>
@@ -327,18 +378,26 @@ export const Products = () => {
                 <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin pb-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {filtered.map(p => {
-                            const cat = CATEGORIES.find(c => c.id === p.categoryId);
                             const isEditing = editingId === p.id;
-                            const profit = Math.max(0, p.price - (p.cost || 0));
+                            
+                            // Live preview of edits
+                            const displayPrice = isEditing ? parseFloat((price || '0').replace(',', '.')) : p.price;
+                            const displayCost = isEditing ? parseFloat((cost || '0').replace(',', '.')) : (p.cost || 0);
+                            const displayStock = isEditing ? parseInt(stock || '0', 10) : p.stock;
+                            const displayName = isEditing ? (name || p.name) : p.name;
+                            const displayCatId = isEditing ? category : p.categoryId;
+
+                            const cat = CATEGORIES.find(c => c.id === displayCatId);
+                            const profit = Math.max(0, displayPrice - displayCost);
                             const monthlySales = monthlySalesMap[p.id] || 0;
                             // Suggest to buy enough for at least 1 month of stock based on sales
-                            const suggestedPurchase = Math.max(0, monthlySales - p.stock);
+                            const suggestedPurchase = Math.max(0, monthlySales - displayStock);
 
                             return (
-                                <div key={p.id} className={`p-5 rounded-2xl border transition-all flex flex-col gap-4 ${isEditing ? 'bg-pier-neon/10 border-pier-neon' : 'glass-card border-white/10 hover:border-pier-neon/50'}`}>
+                                <div key={p.id} className={`p-5 rounded-2xl border transition-all flex flex-col gap-4 ${isEditing ? 'bg-pier-neon/10 border-pier-neon z-10 scale-[1.02] shadow-[0_0_20px_rgba(34,211,238,0.15)]' : 'glass-card border-white/10 hover:border-pier-neon/50'}`}>
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <h4 className="font-bold text-lg text-white">{p.name}</h4>
+                                            <h4 className="font-bold text-lg text-white">{displayName}</h4>
                                             <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
                                                 <span>{cat?.icon}</span> {cat?.name} {p.lastStockUpdate ? `• Atualizado: ${new Date(p.lastStockUpdate).toLocaleDateString('pt-BR')}` : ''}
                                             </p>
@@ -364,11 +423,11 @@ export const Products = () => {
                                     <div className="grid grid-cols-2 gap-2 text-sm bg-black/20 p-3 rounded-xl border border-white/5">
                                         <div>
                                             <p className="text-[10px] text-slate-500 uppercase font-bold">Custo</p>
-                                            <p className="text-white font-mono">R$ {(p.cost || 0).toFixed(2)}</p>
+                                            <p className="text-white font-mono">R$ {displayCost.toFixed(2)}</p>
                                         </div>
                                         <div>
                                             <p className="text-[10px] text-slate-500 uppercase font-bold">Venda</p>
-                                            <p className="text-pier-neon font-bold font-mono">R$ {p.price.toFixed(2)}</p>
+                                            <p className="text-pier-neon font-bold font-mono">R$ {displayPrice.toFixed(2)}</p>
                                         </div>
                                         <div>
                                             <p className="text-[10px] text-slate-500 uppercase font-bold">Lucro</p>
@@ -377,7 +436,7 @@ export const Products = () => {
                                         <div>
                                             <p className="text-[10px] text-slate-500 uppercase font-bold">Estoque / Vendas</p>
                                             <p className="text-white font-mono">
-                                                <span className={p.stock < 10 ? 'text-red-400' : ''}>{p.stock}</span> / {monthlySales}
+                                                <span className={displayStock < 10 ? 'text-red-400' : ''}>{displayStock}</span> / {monthlySales}
                                             </p>
                                         </div>
                                     </div>
