@@ -39,8 +39,8 @@ export const Products = () => {
         const updated: Product = {
             id: editingId,
             name,
-            price: parseFloat(price),
-            cost: parseFloat(cost),
+            price: parseFloat(price.replace(',', '.')),
+            cost: parseFloat(cost.replace(',', '.')),
             categoryId: category,
             stock: parseInt(stock),
             lastStockUpdate: stockDiff !== 0 ? new Date() : existing?.lastStockUpdate
@@ -52,8 +52,8 @@ export const Products = () => {
         const newProduct: Product = {
             id: `p-${Date.now()}`,
             name,
-            price: parseFloat(price),
-            cost: parseFloat(cost),
+            price: parseFloat(price.replace(',', '.')),
+            cost: parseFloat(cost.replace(',', '.')),
             categoryId: category,
             stock: parseInt(stock),
             lastStockUpdate: new Date()
@@ -224,11 +224,11 @@ export const Products = () => {
                         <div>
                             <label className="block text-sm text-slate-400 mb-1">Custo (R$)</label>
                             <input 
-                                type="number"
-                                step="0.01"
+                                type="text"
+                                inputMode="decimal"
                                 value={cost}
                                 onChange={e => setCost(e.target.value)}
-                                className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-white focus:border-pier-neon focus:outline-none focus:bg-black/40 transition-all"
+                                className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-white focus:border-pier-neon focus:outline-none focus:bg-black/40 transition-all font-mono"
                                 placeholder="0.00"
                                 required
                             />
@@ -236,11 +236,11 @@ export const Products = () => {
                         <div>
                             <label className="block text-sm text-slate-400 mb-1">Venda (R$)</label>
                             <input 
-                                type="number"
-                                step="0.01"
+                                type="text"
+                                inputMode="decimal"
                                 value={price}
                                 onChange={e => setPrice(e.target.value)}
-                                className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-white focus:border-pier-neon focus:outline-none focus:bg-black/40 transition-all"
+                                className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-white focus:border-pier-neon focus:outline-none focus:bg-black/40 transition-all font-mono"
                                 placeholder="0.00"
                                 required
                             />
@@ -261,13 +261,13 @@ export const Products = () => {
                         <div>
                             <p className="text-[10px] text-slate-400 uppercase tracking-wider">Lucro / Unidade</p>
                             <p className="text-sm font-bold text-pier-green font-mono">
-                                R$ {Math.max(0, parseFloat(price || '0') - parseFloat(cost || '0')).toFixed(2)}
+                                R$ {Math.max(0, parseFloat((price || '0').replace(',', '.')) - parseFloat((cost || '0').replace(',', '.'))).toFixed(2)}
                             </p>
                         </div>
                         <div className="text-right">
                             <p className="text-[10px] text-slate-400 uppercase tracking-wider">Margem Bruta</p>
                             <p className="text-sm font-bold text-pier-neon font-mono">
-                                {parseFloat(price) > 0 ? Math.round(((parseFloat(price) - parseFloat(cost || '0')) / parseFloat(price)) * 100) : 0}%
+                                {parseFloat((price || '0').replace(',', '.')) > 0 ? Math.round(((parseFloat((price || '0').replace(',', '.')) - parseFloat((cost || '0').replace(',', '.'))) / parseFloat((price || '0').replace(',', '.'))) * 100) : 0}%
                             </p>
                         </div>
                     </div>

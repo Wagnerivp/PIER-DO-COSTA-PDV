@@ -25,7 +25,7 @@ export const Finance = () => {
         updateExpense({
           ...existing,
           description,
-          amount: parseFloat(amount),
+          amount: parseFloat(amount.replace(',', '.')),
           category
         });
       }
@@ -34,7 +34,7 @@ export const Finance = () => {
       addExpense({
         id: `exp-${Date.now()}`,
         description,
-        amount: parseFloat(amount),
+        amount: parseFloat(amount.replace(',', '.')),
         category,
         date: new Date()
       });
@@ -181,8 +181,8 @@ export const Finance = () => {
                         <div>
                             <label className="block text-sm text-slate-400 mb-1">Valor (R$)</label>
                             <input 
-                                type="number"
-                                step="0.01"
+                                type="text"
+                                inputMode="decimal"
                                 value={amount}
                                 onChange={e => setAmount(e.target.value)}
                                 className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-white focus:border-pier-neon font-mono focus:outline-none transition-all"

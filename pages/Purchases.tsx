@@ -33,7 +33,7 @@ export const Purchases = () => {
                 updatePurchase({
                     ...existing,
                     description,
-                    amount: parseFloat(amount),
+                    amount: parseFloat(amount.replace(',', '.')),
                     supplier,
                     date: new Date(date + 'T12:00:00Z'),
                     paymentDate: new Date(paymentDate + 'T12:00:00Z'),
@@ -44,7 +44,7 @@ export const Purchases = () => {
             addPurchase({
                 id: `pur-${Date.now()}`,
                 description,
-                amount: parseFloat(amount),
+                amount: parseFloat(amount.replace(',', '.')),
                 supplier,
                 date: new Date(date + 'T12:00:00Z'),
                 paymentDate: new Date(paymentDate + 'T12:00:00Z'),
@@ -130,8 +130,8 @@ export const Purchases = () => {
                         <div>
                             <label className="block text-sm font-medium text-slate-400 mb-1">Valor (R$)</label>
                             <input 
-                                type="number"
-                                step="0.01"
+                                type="text"
+                                inputMode="decimal"
                                 value={amount}
                                 onChange={(e) => setAmount(e.target.value)}
                                 placeholder="0.00"

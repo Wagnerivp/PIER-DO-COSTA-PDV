@@ -54,7 +54,7 @@ export const WaiterPanel = () => {
   const waiters = users.filter(u => u.role === 'WAITER');
 
   const handleAddAdvance = () => {
-      const amount = parseFloat(advanceAmount);
+      const amount = parseFloat(advanceAmount.replace(',', '.'));
       if (amount > 0 && advanceWaiterId) {
           addAdvance(advanceWaiterId, amount, advanceDescription || 'Vale adiantamento');
           setIsAdvanceModalOpen(false);
@@ -363,7 +363,8 @@ export const WaiterPanel = () => {
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">R$</span>
                                 <input 
-                                    type="number"
+                                    type="text"
+                                    inputMode="decimal"
                                     value={advanceAmount}
                                     onChange={(e) => setAdvanceAmount(e.target.value)}
                                     placeholder="0.00"
@@ -385,7 +386,7 @@ export const WaiterPanel = () => {
 
                         <button 
                             onClick={handleAddAdvance}
-                            disabled={!advanceWaiterId || !advanceAmount || parseFloat(advanceAmount) <= 0}
+                            disabled={!advanceWaiterId || !advanceAmount || parseFloat(advanceAmount.replace(',', '.')) <= 0}
                             className="w-full py-3 mt-4 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
                             Confirmar Lançamento
