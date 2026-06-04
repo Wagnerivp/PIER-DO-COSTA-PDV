@@ -14,7 +14,8 @@ const WaiterCard = ({
     setIsAdvanceModalOpen, 
     resetWaiterCommissions,
     addConsumption,
-    products
+    products,
+    updateProduct
 }: {
     waiter: User;
     commissionLogs: CommissionLog[];
@@ -27,19 +28,26 @@ const WaiterCard = ({
     resetWaiterCommissions: any;
     addConsumption: any;
     products: Product[];
+    updateProduct: any;
 }) => {
     const [activeTab, setActiveTab] = useState<'RESUMO' | 'CONSUMO'>('RESUMO');
-    const [consumptionProduct, setConsumptionProduct] = useState('');
-    const [consumptionAmount, setConsumptionAmount] = useState('');
+    const [consumptionProductId, setConsumptionProductId] = useState('');
 
     const handleAddConsumption = () => {
-        const amount = parseFloat(consumptionAmount.replace(',', '.'));
-        if (amount > 0 && consumptionProduct) {
-            addConsumption(waiter.id, amount, consumptionProduct);
-            setConsumptionProduct('');
-            setConsumptionAmount('');
-            alert('Consumo lançado com sucesso!');
-        }
+        const prod = products.find(p => p.id === consumptionProductId);
+        if (!prod) return;
+
+        addConsumption(waiter.id, prod.price, `Consumo: ${prod.name}`);
+        
+        // Abate from stock
+        updateProduct({
+            ...prod,
+            stock: Math.max(0, prod.stock - 1),
+            lastStockUpdate: new Date()
+        });
+
+        setConsumptionProductId('');
+        alert('Consumo lançado com sucesso!');
     };
 
     const consumptionsAndAdvances = commissionLogs.filter(l => l.waiterId === waiter.id && (l.type === 'ADVANCE' || l.type === 'CONSUMPTION'));
@@ -82,6 +90,17 @@ const WaiterCard = ({
                     </button>
                 </div>
             </div>
+
+            {/* Arrangement Info */}
+            <div className="mb-4 bg-black/20 p-2 rounded-lg border border-white/5 flex items-center justify-center text-xs">
+                {totals.isComissioned ? (
+                    <span className="text-pier-neon font-bold uppercase tracking-wider">Arranjo: 10% Comissão</span>
+                ) : totals.fixedSalary ? (
+                    <span className="text-pier-green font-bold uppercase tracking-wider">Fixo: R$ {totals.fixedSalary.amount.toFixed(2)} / {totals.fixedSalary.period}</span>
+                ) : (
+                    <span className="text-slate-500 uppercase tracking-wider">Ajuste Manual</span>
+                )}
+            </div>
             
             <div className="flex gap-2 mb-4 border-b border-white/10 pb-2">
                 <button 
@@ -102,49 +121,49 @@ const WaiterCard = ({
                 <>
                     <div className="space-y-3">
                         <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-400">A Receber:</span>
+                            <span className="text-slate-400">A Receber Líquido:</span>
                             <span className="text-pier-neon font-bold font-mono text-base">R$ {totals.pending.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between items-center text-sm border-t border-white/5 pt-2">
-                            <span className="text-slate-400">Hoje:</span>
-                            <span className="text-pier-green font-bold font-mono">R$ {totals.daily.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-400">Semana:</span>
-                            <span className="text-blue-400 font-bold font-mono">R$ {totals.weekly.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-400">Mês:</span>
-                            <span className="text-purple-400 font-bold font-mono">R$ {totals.monthly.toFixed(2)}</span>
-                        </div>
+                        {totals.isComissioned && (
+                            <>
+                                <div className="flex justify-between items-center text-sm border-t border-white/5 pt-2">
+                                    <span className="text-slate-400">Comissões Hoje:</span>
+                                    <span className="text-pier-green font-bold font-mono">R$ {totals.daily.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-400">Comissões Semana:</span>
+                                    <span className="text-blue-400 font-bold font-mono">R$ {totals.weekly.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-400">Comissões Mês:</span>
+                                    <span className="text-purple-400 font-bold font-mono">R$ {totals.monthly.toFixed(2)}</span>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </>
             ) : (
                 <div className="space-y-4">
                     <div className="flex flex-col gap-2 bg-slate-900/50 p-3 rounded-lg border border-white/5">
-                        <input 
-                            type="text" 
-                            placeholder="Produto/Descrição" 
-                            value={consumptionProduct}
-                            onChange={(e) => setConsumptionProduct(e.target.value)}
-                            className="bg-black/50 text-white text-xs p-2 rounded border border-white/10 outline-none focus:border-pier-neon"
-                        />
-                        <div className="flex gap-2">
-                            <input 
-                                type="text" 
-                                inputMode="decimal"
-                                placeholder="Valor (R$)" 
-                                value={consumptionAmount}
-                                onChange={(e) => setConsumptionAmount(e.target.value)}
-                                className="bg-black/50 text-white text-xs p-2 rounded border border-white/10 outline-none focus:border-pier-neon flex-1 font-mono"
-                            />
-                            <button 
-                                onClick={handleAddConsumption}
-                                className="bg-pier-neon text-pier-900 px-3 py-2 rounded text-xs font-bold"
-                            >
-                                Lançar
-                            </button>
-                        </div>
+                        <select 
+                            value={consumptionProductId}
+                            onChange={(e) => setConsumptionProductId(e.target.value)}
+                            className="bg-black/50 text-white text-xs p-2 rounded border border-white/10 outline-none focus:border-pier-neon w-full"
+                        >
+                            <option value="">Selecione um Produto...</option>
+                            {products.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
+                                <option key={p.id} value={p.id}>
+                                    {p.name} - R$ {p.price.toFixed(2)} (Estoque: {p.stock})
+                                </option>
+                            ))}
+                        </select>
+                        <button 
+                            onClick={handleAddConsumption}
+                            disabled={!consumptionProductId}
+                            className="bg-pier-neon text-pier-900 px-3 py-2 rounded text-xs font-bold w-full disabled:opacity-50 transition-opacity"
+                        >
+                            Lançar Consumo (-1 Estoque)
+                        </button>
                     </div>
                     
                     <div className="max-h-32 overflow-y-auto scrollbar-thin pr-1 space-y-2">
@@ -190,7 +209,7 @@ const WaiterCard = ({
 };
 
 export const WaiterPanel = () => {
-  const { currentUser, commissionLogs, orders, users, products, addConsumption, addAdvance, deleteCommission, updateCommission, removeUser, updateUser, resetWaiterCommissions } = useApp();
+  const { currentUser, commissionLogs, orders, users, products, addConsumption, addAdvance, deleteCommission, updateCommission, removeUser, updateUser, resetWaiterCommissions, updateProduct } = useApp();
   const [selectedWaiterFilter, setSelectedWaiterFilter] = useState<string>('ALL');
   
   // Advance Modal State
@@ -218,12 +237,51 @@ export const WaiterPanel = () => {
   startOfWeek.setHours(0,0,0,0);
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const calculateTotals = (logs: any[], waiterOrders: any[]) => {
+  const calculateTotals = (logs: any[], waiterOrders: any[], waiterName: string) => {
+      const wName = waiterName.toLowerCase();
+      
+      const isFixed = wName.includes('igor') || wName.includes('marley') || wName.includes('alicia');
+      const isComissioned = !isFixed;
+      
       const daily = logs.filter(l => new Date(l.date) >= startOfDay).reduce((acc, l) => acc + (l.amount || 0), 0);
-      const weekly = logs.filter(l => new Date(l.date) >= startOfWeek).reduce((acc, l) => acc + (l.amount || 0), 0);
-      const monthly = logs.filter(l => new Date(l.date) >= startOfMonth).reduce((acc, l) => acc + (l.amount || 0), 0);
-      const pending = waiterOrders.filter(o => o.status === 'OPEN').reduce((acc, o) => acc + ((o.subtotal || 0) * 0.10), 0);
-      return { daily, weekly, monthly, pending };
+      const weeklyLogs = logs.filter(l => new Date(l.date) >= startOfWeek);
+      const monthlyLogs = logs.filter(l => new Date(l.date) >= startOfMonth);
+      
+      const weekly = weeklyLogs.reduce((acc, l) => acc + (l.amount || 0), 0);
+      const monthly = monthlyLogs.reduce((acc, l) => acc + (l.amount || 0), 0);
+      
+      let pending = 0;
+      let fixedSalary = null;
+
+      if (isComissioned) {
+          const comissionPending = waiterOrders.filter(o => o.status === 'OPEN').reduce((acc, o) => acc + ((o.subtotal || 0) * 0.10), 0);
+          // For commissioned, A Receber is pending commissions + accumulated past commissions - advances (which is in 'logs').
+          // Actually, our old logic was A Receber just showing 'pending' for open tables. But 'A Receber' usually means TOTAL owed.
+          // Wait, 'pending' was only OPEN tables before this prompt constraint. 
+          // 'A Receber Líquido' should be total accumulated.
+          const unpaidCommissions = logs.filter(l => l.status === 'PENDING').reduce((acc, l) => acc + (l.amount || 0), 0);
+          // Assuming 'PENDING' logs are commissions not yet paid out. Wait, when order closes, we set them to 'PAID' and pay out immediately?
+          // Actually, paid out commissions are just logs. Let's keep pending strictly as OPEN tables for commissioned, plus we subtract any ADVANCES.
+          const advancesAndConsumptionsTotal = logs.filter(l => l.amount < 0).reduce((acc, l) => acc + l.amount, 0); // negative number
+          const paidCommissions = logs.filter(l => l.amount > 0).reduce((acc, l) => acc + l.amount, 0); // positive
+          // This can get messy if we don't have a payout button. The app has "ZERAR VALORES" which wipes the logs for that waiter.
+          // IF they wipe logs, everything starts at 0. So ALL logs currently exist.
+          const totalAccumulated = logs.reduce((acc, l) => acc + (l.amount || 0), 0);
+          pending = totalAccumulated + comissionPending;
+      } else {
+          if (wName.includes('igor')) {
+              fixedSalary = { amount: 1400, period: 'mês' };
+              pending = 1400 + monthly; // negative logs will reduce this
+          } else if (wName.includes('marley')) {
+              fixedSalary = { amount: 250, period: 'semana' };
+              pending = 250 + weekly;
+          } else if (wName.includes('alicia')) {
+              fixedSalary = { amount: 150, period: 'semana' };
+              pending = 150 + weekly;
+          }
+      }
+
+      return { daily, weekly, monthly, pending, fixedSalary, isComissioned };
   };
 
   const dailyTotal = relevantLogs.filter(l => new Date(l.date) >= startOfDay).reduce((acc, l) => acc + (l.amount || 0), 0);
@@ -339,7 +397,7 @@ export const WaiterPanel = () => {
                     {waiters.map(waiter => {
                         const waiterLogs = commissionLogs.filter(l => l.waiterId === waiter.id);
                         const waiterOrders = orders.filter(o => o.waiterId === waiter.id);
-                        const totals = calculateTotals(waiterLogs, waiterOrders);
+                        const totals = calculateTotals(waiterLogs, waiterOrders, waiter.name);
                         
                         return (
                             <WaiterCard 
