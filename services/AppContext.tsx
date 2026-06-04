@@ -40,6 +40,7 @@ interface AppContextData {
   updateCommission: (logId: string, updates: Partial<CommissionLog>) => void;
   deleteCommission: (logId: string) => void;
   addAdvance: (waiterId: string, amount: number, description: string) => void;
+  addConsumption: (waiterId: string, amount: number, description: string) => void;
   processDirectSale: (items: {product: Product, quantity: number, total: number}[], paymentMethod: string) => void;
   deleteOrder: (orderId: string, pin: string) => boolean;
   addExpense: (expense: Expense) => void;
@@ -564,6 +565,19 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     setCommissionLogs(prev => prev.filter(l => l.id !== logId));
   };
 
+  const addConsumption = (waiterId: string, amount: number, description: string) => {
+    const log: CommissionLog = {
+      id: `cons-${Date.now()}`,
+      waiterId,
+      amount: -amount, // Negative amount for consumption
+      date: new Date(),
+      status: 'PAID',
+      type: 'CONSUMPTION',
+      description
+    };
+    setCommissionLogs(prev => [...prev, log]);
+  };
+
   const addAdvance = (waiterId: string, amount: number, description: string) => {
     const log: CommissionLog = {
       id: `adv-${Date.now()}`,
@@ -680,7 +694,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   return (
     <AppContext.Provider value={{
       currentUser, login, directLogin, logout, users, products, tables, orders, customers, commissionLogs, expenses, purchases, isRegisterOpen, registerBalance,
-      openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payCommission, updateCommission, deleteCommission, addAdvance, processDirectSale, deleteOrder,
+      openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payCommission, updateCommission, deleteCommission, addAdvance, addConsumption, processDirectSale, deleteOrder,
       addUser, updateUser, removeUser, addExpense, updateExpense, removeExpense, addPurchase, updatePurchase, removePurchase, addCustomer, updateCustomer, removeCustomer, resetSystem, resetWaiterCommissions
     }}>
       {children}

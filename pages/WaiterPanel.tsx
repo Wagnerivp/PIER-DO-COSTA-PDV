@@ -1,9 +1,196 @@
 import React, { useState } from 'react';
 import { useApp } from '../services/AppContext';
-import { DollarSign, CheckCircle, Clock, TrendingUp, Filter, Users, MinusSquare, X, Trash2, Edit2 } from 'lucide-react';
+import { DollarSign, CheckCircle, Clock, TrendingUp, Filter, Users, MinusSquare, X, Trash2, Edit2, Coffee } from 'lucide-react';
+import { User, Order, CommissionLog, Product } from '../types';
+
+const WaiterCard = ({ 
+    waiter, 
+    commissionLogs, 
+    orders, 
+    totals, 
+    updateUser, 
+    removeUser, 
+    setAdvanceWaiterId, 
+    setIsAdvanceModalOpen, 
+    resetWaiterCommissions,
+    addConsumption,
+    products
+}: {
+    waiter: User;
+    commissionLogs: CommissionLog[];
+    orders: Order[];
+    totals: any;
+    updateUser: any;
+    removeUser: any;
+    setAdvanceWaiterId: any;
+    setIsAdvanceModalOpen: any;
+    resetWaiterCommissions: any;
+    addConsumption: any;
+    products: Product[];
+}) => {
+    const [activeTab, setActiveTab] = useState<'RESUMO' | 'CONSUMO'>('RESUMO');
+    const [consumptionProduct, setConsumptionProduct] = useState('');
+    const [consumptionAmount, setConsumptionAmount] = useState('');
+
+    const handleAddConsumption = () => {
+        const amount = parseFloat(consumptionAmount.replace(',', '.'));
+        if (amount > 0 && consumptionProduct) {
+            addConsumption(waiter.id, amount, consumptionProduct);
+            setConsumptionProduct('');
+            setConsumptionAmount('');
+            alert('Consumo lançado com sucesso!');
+        }
+    };
+
+    const consumptionsAndAdvances = commissionLogs.filter(l => l.waiterId === waiter.id && (l.type === 'ADVANCE' || l.type === 'CONSUMPTION'));
+
+    return (
+        <div className="glass-panel p-5 rounded-2xl border border-white/10 hover:border-pier-neon/30 transition-colors">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center border border-white/10">
+                        <Users size={20} className="text-slate-400" />
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-white uppercase">{waiter.name}</h4>
+                        <p className="text-xs text-slate-400">Garçom</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-1">
+                    <button 
+                        onClick={() => {
+                            const newName = window.prompt("Editar nome do garçom:", waiter.name);
+                            if (newName) {
+                                updateUser({ ...waiter, name: newName });
+                            }
+                        }}
+                        className="p-1.5 text-slate-500 hover:text-pier-neon hover:bg-pier-neon/10 rounded-lg transition-colors"
+                        title="Editar Garçom"
+                    >
+                        <Edit2 size={16} />
+                    </button>
+                    <button 
+                        onClick={() => {
+                            if (window.confirm(`Deseja realmente excluir o garçom ${waiter.name}?`)) {
+                                removeUser(waiter.id);
+                            }
+                        }}
+                        className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                        title="Excluir Garçom"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                </div>
+            </div>
+            
+            <div className="flex gap-2 mb-4 border-b border-white/10 pb-2">
+                <button 
+                    onClick={() => setActiveTab('RESUMO')} 
+                    className={`text-xs font-bold uppercase transition-colors ${activeTab === 'RESUMO' ? 'text-pier-neon' : 'text-slate-500 hover:text-white'}`}
+                >
+                    Resumo
+                </button>
+                <button 
+                    onClick={() => setActiveTab('CONSUMO')} 
+                    className={`text-xs font-bold uppercase transition-colors ${activeTab === 'CONSUMO' ? 'text-pier-neon' : 'text-slate-500 hover:text-white'}`}
+                >
+                    Vales e Consumo
+                </button>
+            </div>
+
+            {activeTab === 'RESUMO' ? (
+                <>
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-400">A Receber:</span>
+                            <span className="text-pier-neon font-bold font-mono text-base">R$ {totals.pending.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm border-t border-white/5 pt-2">
+                            <span className="text-slate-400">Hoje:</span>
+                            <span className="text-pier-green font-bold font-mono">R$ {totals.daily.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-400">Semana:</span>
+                            <span className="text-blue-400 font-bold font-mono">R$ {totals.weekly.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-400">Mês:</span>
+                            <span className="text-purple-400 font-bold font-mono">R$ {totals.monthly.toFixed(2)}</span>
+                        </div>
+                    </div>
+                </>
+            ) : (
+                <div className="space-y-4">
+                    <div className="flex flex-col gap-2 bg-slate-900/50 p-3 rounded-lg border border-white/5">
+                        <input 
+                            type="text" 
+                            placeholder="Produto/Descrição" 
+                            value={consumptionProduct}
+                            onChange={(e) => setConsumptionProduct(e.target.value)}
+                            className="bg-black/50 text-white text-xs p-2 rounded border border-white/10 outline-none focus:border-pier-neon"
+                        />
+                        <div className="flex gap-2">
+                            <input 
+                                type="text" 
+                                inputMode="decimal"
+                                placeholder="Valor (R$)" 
+                                value={consumptionAmount}
+                                onChange={(e) => setConsumptionAmount(e.target.value)}
+                                className="bg-black/50 text-white text-xs p-2 rounded border border-white/10 outline-none focus:border-pier-neon flex-1 font-mono"
+                            />
+                            <button 
+                                onClick={handleAddConsumption}
+                                className="bg-pier-neon text-pier-900 px-3 py-2 rounded text-xs font-bold"
+                            >
+                                Lançar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="max-h-32 overflow-y-auto scrollbar-thin pr-1 space-y-2">
+                        {consumptionsAndAdvances.slice().reverse().map(log => (
+                            <div key={log.id} className="flex justify-between items-center text-xs bg-white/5 p-2 rounded">
+                                <div className="flex flex-col">
+                                    <span className="text-slate-300 font-semibold">{log.description || (log.type === 'CONSUMPTION' ? 'Consumo' : 'Vale')}</span>
+                                    <span className="text-[10px] text-slate-500">{new Date(log.date).toLocaleDateString('pt-BR')}</span>
+                                </div>
+                                <span className="text-red-400 font-mono font-bold">-R$ {Math.abs(log.amount || 0).toFixed(2)}</span>
+                            </div>
+                        ))}
+                        {consumptionsAndAdvances.length === 0 && (
+                            <p className="text-xs text-slate-500 text-center py-2">Nenhum registro.</p>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-white/10">
+                <button
+                    onClick={() => {
+                        setAdvanceWaiterId(waiter.id);
+                        setIsAdvanceModalOpen(true);
+                    }}
+                    className="w-full text-center py-2 text-[10px] sm:text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg transition-colors border border-white/5 uppercase"
+                >
+                    Lançar Vale
+                </button>
+                <button
+                    onClick={() => {
+                        if (window.confirm(`Deseja realmente ZERAR TODOS os valores e comissões lançadas para o garçom ${waiter.name}?`)) {
+                            resetWaiterCommissions(waiter.id);
+                        }
+                    }}
+                    className="w-full text-center py-2 text-[10px] sm:text-xs font-bold bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors border border-red-500/20 uppercase"
+                >
+                    Zerar Valores
+                </button>
+            </div>
+        </div>
+    );
+};
 
 export const WaiterPanel = () => {
-  const { currentUser, commissionLogs, orders, users, addAdvance, deleteCommission, updateCommission, removeUser, updateUser, resetWaiterCommissions } = useApp();
+  const { currentUser, commissionLogs, orders, users, products, addConsumption, addAdvance, deleteCommission, updateCommission, removeUser, updateUser, resetWaiterCommissions } = useApp();
   const [selectedWaiterFilter, setSelectedWaiterFilter] = useState<string>('ALL');
   
   // Advance Modal State
@@ -155,84 +342,20 @@ export const WaiterPanel = () => {
                         const totals = calculateTotals(waiterLogs, waiterOrders);
                         
                         return (
-                            <div key={waiter.id} className="glass-panel p-5 rounded-2xl border border-white/10 hover:border-pier-neon/30 transition-colors">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center border border-white/10">
-                                            <Users size={20} className="text-slate-400" />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-white uppercase">{waiter.name}</h4>
-                                            <p className="text-xs text-slate-400">Garçom</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <button 
-                                            onClick={() => {
-                                                const newName = window.prompt("Editar nome do garçom:", waiter.name);
-                                                if (newName) {
-                                                    updateUser({ ...waiter, name: newName });
-                                                }
-                                            }}
-                                            className="p-1.5 text-slate-500 hover:text-pier-neon hover:bg-pier-neon/10 rounded-lg transition-colors"
-                                            title="Editar Garçom"
-                                        >
-                                            <Edit2 size={16} />
-                                        </button>
-                                        <button 
-                                            onClick={() => {
-                                                if (window.confirm(`Deseja realmente excluir o garçom ${waiter.name}?`)) {
-                                                    removeUser(waiter.id);
-                                                }
-                                            }}
-                                            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
-                                            title="Excluir Garçom"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <div className="space-y-3">
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-slate-400">A Receber:</span>
-                                        <span className="text-pier-neon font-bold font-mono text-base">R$ {totals.pending.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm border-t border-white/5 pt-2">
-                                        <span className="text-slate-400">Hoje:</span>
-                                        <span className="text-pier-green font-bold font-mono">R$ {totals.daily.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-slate-400">Semana:</span>
-                                        <span className="text-blue-400 font-bold font-mono">R$ {totals.weekly.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-slate-400">Mês:</span>
-                                        <span className="text-purple-400 font-bold font-mono">R$ {totals.monthly.toFixed(2)}</span>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-white/10">
-                                    <button
-                                        onClick={() => {
-                                            setAdvanceWaiterId(waiter.id);
-                                            setIsAdvanceModalOpen(true);
-                                        }}
-                                        className="w-full text-center py-2 text-[10px] sm:text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg transition-colors border border-white/5 uppercase"
-                                    >
-                                        Lançar Vale
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            if (window.confirm(`Deseja realmente ZERAR TODOS os valores e comissões lançadas para o garçom ${waiter.name}?`)) {
-                                                resetWaiterCommissions(waiter.id);
-                                            }
-                                        }}
-                                        className="w-full text-center py-2 text-[10px] sm:text-xs font-bold bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors border border-red-500/20 uppercase"
-                                    >
-                                        Zerar Valores
-                                    </button>
-                                </div>
-                            </div>
+                            <WaiterCard 
+                                key={waiter.id}
+                                waiter={waiter}
+                                commissionLogs={commissionLogs}
+                                orders={orders}
+                                totals={totals}
+                                updateUser={updateUser}
+                                removeUser={removeUser}
+                                setAdvanceWaiterId={setAdvanceWaiterId}
+                                setIsAdvanceModalOpen={setIsAdvanceModalOpen}
+                                resetWaiterCommissions={resetWaiterCommissions}
+                                addConsumption={addConsumption}
+                                products={products}
+                            />
                         );
                     })}
                 </div>

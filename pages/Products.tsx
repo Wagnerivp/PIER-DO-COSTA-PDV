@@ -440,6 +440,38 @@ export const Products = () => {
                                             </p>
                                         </div>
                                     </div>
+                                    
+                                    {isEditing && (
+                                        <div className="bg-pier-neon/5 border border-pier-neon/20 rounded-xl p-3 flex flex-col gap-3">
+                                            <p className="text-[10px] text-pier-neon font-bold uppercase tracking-widest flex items-center justify-between">
+                                                <span>Caixa / Fardo</span>
+                                                <span className="text-slate-400 uppercase text-[9px] font-normal tracking-wide">Calculadora</span>
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="block text-[10px] text-slate-400 mb-1">Custo Total (R$)</label>
+                                                    <input 
+                                                        type="text"
+                                                        inputMode="decimal"
+                                                        value={packCost}
+                                                        onChange={e => handlePackCostChange(e.target.value)}
+                                                        className="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-pier-neon focus:outline-none transition-all font-mono"
+                                                        placeholder="Ex: 50.00"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] text-slate-400 mb-1">Qtd. Unidades</label>
+                                                    <input 
+                                                        type="number"
+                                                        value={packQuantity}
+                                                        onChange={e => handlePackQuantityChange(e.target.value)}
+                                                        className="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-pier-neon focus:outline-none transition-all font-mono"
+                                                        placeholder="Ex: 12"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {suggestedPurchase > 0 ? (
                                         <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-3 flex items-center justify-between">

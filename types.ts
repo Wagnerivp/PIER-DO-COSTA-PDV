@@ -83,7 +83,7 @@ export interface CommissionLog {
   amount: number;
   date: Date;
   status: 'PENDING' | 'PAID';
-  type?: 'COMMISSION' | 'ADVANCE';
+  type?: 'COMMISSION' | 'ADVANCE' | 'CONSUMPTION';
   description?: string;
 }
 
