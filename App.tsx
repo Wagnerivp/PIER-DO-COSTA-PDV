@@ -12,6 +12,7 @@ import { Products } from './pages/Products';
 import { Finance } from './pages/Finance';
 import { Team } from './pages/Team';
 import { Customers } from './pages/Customers';
+import { CashierAlertListener } from './components/CashierAlertListener';
 
 import { Purchases } from './pages/Purchases';
 
@@ -23,21 +24,24 @@ const AppRoutes = () => {
   }
 
   return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/tables" element={<Tables />} />
-        <Route path="/fast-sale" element={<FastSale />} />
-        <Route path="/cash-register" element={<CashRegister />} />
-        <Route path="/products" element={<Products />} />
-        <Route path="/purchases" element={<Purchases />} />
-        <Route path="/finance" element={<Finance />} />
-        <Route path="/team" element={<Team />} />
-        <Route path="/commissions" element={<WaiterPanel />} />
-        <Route path="/customers" element={<Customers />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Layout>
+    <>
+      <CashierAlertListener />
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/tables" element={<Tables />} />
+          <Route path="/fast-sale" element={<FastSale />} />
+          <Route path="/cash-register" element={<CashRegister />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/purchases" element={<Purchases />} />
+          <Route path="/finance" element={<Finance />} />
+          <Route path="/team" element={<Team />} />
+          <Route path="/commissions" element={<WaiterPanel />} />
+          <Route path="/customers" element={<Customers />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Layout>
+    </>
   );
 };
 

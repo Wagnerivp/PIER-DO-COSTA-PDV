@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../services/AppContext';
-import { ArrowLeft, Search, Receipt, CreditCard, Banknote, QrCode, Calculator, Minus, Plus, Edit2, Users, X, RefreshCw, Trash2, Printer, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Search, Receipt, CreditCard, Banknote, QrCode, Calculator, Minus, Plus, Edit2, Users, X, RefreshCw, Trash2, Printer, MessageCircle, Bell } from 'lucide-react';
 import { CATEGORIES } from '../constants';
 import html2canvas from 'html2canvas';
+import { supabase } from '../services/supabase';
 
 interface Props {
   tableId: string;
@@ -14,6 +15,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
   const [selectedCategory, setSelectedCategory] = useState('c-all');
   const [searchTerm, setSearchTerm] = useState('');
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [isNotifying, setIsNotifying] = useState(false);
   
   // Partial Payment State (Conta Separada)
   const [isPartialPayment, setIsPartialPayment] = useState(false);
@@ -88,6 +90,29 @@ export const OrderView = ({ tableId, onBack }: Props) => {
   const finalTotal = currentSubtotal + activeServiceFee;
   const changeAmount = cashReceived ? parseFloat(cashReceived) - finalTotal : 0;
   const waiterName = useApp().users.find(u => u.id === order.waiterId)?.name;
+
+  const handleNotifyCashier = async () => {
+      try {
+          setIsNotifying(true);
+          const { error } = await supabase.from('cashier_notifications').insert({
+              table_id: tableId,
+              table_number: table?.number,
+              waiter_name: currentUser?.name || 'Garçom'
+          });
+          
+          if (error) {
+              console.error(error);
+              alert("Erro ao notificar o banco de dados. Tente novamente.");
+          } else {
+              // Try to fallback show toast
+              alert("Pedido enviado ao caixa!");
+          }
+      } catch (err) {
+          console.error(err);
+      } finally {
+          setIsNotifying(false);
+      }
+  };
 
   const handleCheckout = (method: string) => {
     setCashError('');
@@ -652,6 +677,14 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                     className="w-full py-4 rounded-xl bg-gradient-to-r from-pier-neon to-pier-green text-pier-900 font-bold text-lg hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
                 >
                     ENCERRAR VENDA E PAGAR
+                </button>
+                <button
+                    onClick={handleNotifyCashier}
+                    disabled={order.items.length === 0 || isNotifying}
+                    className="w-full py-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-lg hover:shadow-[0_0_20px_rgba(220,38,38,0.4)] disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                    <Bell size={24} className={isNotifying ? "animate-pulse" : ""} />
+                    {isNotifying ? "ENVIANDO..." : "SOLICITAR FECHAMENTO E IMPRESSÃO"}
                 </button>
             </div>
         </div>
