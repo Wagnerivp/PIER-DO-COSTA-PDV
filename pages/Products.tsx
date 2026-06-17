@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../services/AppContext';
 import { CATEGORIES } from '../constants';
-import { Trash2, Plus, Package, Search, Edit3, Save, X } from 'lucide-react';
+import { Trash2, Plus, Package, Search, Edit3, Save, X, RotateCcw } from 'lucide-react';
 import { Product } from '../types';
 
 export const Products = () => {
@@ -120,13 +120,30 @@ export const Products = () => {
   const monthlySalesMap: Record<string, number> = {};
   
   orders.forEach(o => {
-      // Only count CLOSED orders for actual sales, or OPEN too? Let's say CLOSED.
-      if (o.status === 'CLOSED' && o.closedAt && new Date(o.closedAt) >= startOfMonth) {
-          o.items.forEach(item => {
-              monthlySalesMap[item.productId] = (monthlySalesMap[item.productId] || 0) + item.quantity;
-          });
+      if (o.status === 'CLOSED' && o.closedAt) {
+          const orderDate = new Date(o.closedAt);
+          if (orderDate >= startOfMonth) {
+              o.items.forEach(item => {
+                  const product = products.find(p => p.id === item.productId);
+                  // Use salesResetAt as floor if it exists and is after startOfMonth
+                  const resetDate = product?.salesResetAt ? new Date(product.salesResetAt) : startOfMonth;
+                  const effectiveFloor = resetDate > startOfMonth ? resetDate : startOfMonth;
+                  
+                  if (orderDate >= effectiveFloor) {
+                      monthlySalesMap[item.productId] = (monthlySalesMap[item.productId] || 0) + item.quantity;
+                  }
+              });
+          }
       }
   });
+
+  const handleResetSales = (product: Product) => {
+      updateProduct({
+          ...product,
+          salesResetAt: new Date()
+      });
+      showToast('Estoque vendido zerado!');
+  };
 
   const getSubcategoryWeight = (name: string) => {
       const lower = name.toLowerCase();
@@ -435,9 +452,19 @@ export const Products = () => {
                                         </div>
                                         <div>
                                             <p className="text-[10px] text-slate-500 uppercase font-bold">Estoque / Vendas</p>
-                                            <p className="text-white font-mono">
-                                                <span className={displayStock < 10 ? 'text-red-400' : ''}>{displayStock}</span> / {monthlySales}
-                                            </p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-white font-mono">
+                                                    <span className={displayStock < 10 ? 'text-red-400' : ''}>{displayStock}</span> / {monthlySales}
+                                                </p>
+                                                {!isEditing && (
+                                                    <button 
+                                                        onClick={() => handleResetSales(p)}
+                                                        className="text-[10px] bg-slate-800 text-blue-400 hover:bg-blue-500/20 px-2 py-0.5 rounded border border-blue-500/30 transition-all font-bold"
+                                                    >
+                                                        Zerar Vendas
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                     

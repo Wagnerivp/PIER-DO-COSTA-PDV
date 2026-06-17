@@ -24,6 +24,7 @@ export interface Product {
   image?: string;
   description?: string;
   lastStockUpdate?: Date;
+  salesResetAt?: Date;
 }
 
 export interface Customer {

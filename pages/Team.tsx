@@ -49,7 +49,7 @@ export const Team = () => {
       // Check for PIN conflicts if adding new, or changing pin
       const conflict = users.find(u => u.pin === pin && u.id !== editingId);
       if (conflict) {
-          alert('Este PIN já está em uso por outro funcionário.');
+          showToast('Este PIN já está em uso por outro funcionário.');
           return;
       }
 

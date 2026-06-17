@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../services/AppContext';
-import { ArrowLeft, Search, Receipt, CreditCard, Banknote, QrCode, Calculator, Minus, Edit2, Users, X, RefreshCw, Trash2, Printer, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Search, Receipt, CreditCard, Banknote, QrCode, Calculator, Minus, Plus, Edit2, Users, X, RefreshCw, Trash2, Printer, MessageCircle } from 'lucide-react';
 import { CATEGORIES } from '../constants';
 import html2canvas from 'html2canvas';
 
@@ -10,11 +10,16 @@ interface Props {
 }
 
 export const OrderView = ({ tableId, onBack }: Props) => {
-  const { tables, orders, products, addToOrder, removeFromOrder, closeAccount, updateTableName, cancelOrder, requestCheckout, currentUser, customers, addCustomer, updateCustomer } = useApp();
+  const { tables, orders, products, addToOrder, removeFromOrder, closeAccount, payPartialAccount, updateTableName, cancelOrder, requestCheckout, currentUser, customers, addCustomer, updateCustomer } = useApp();
   const [selectedCategory, setSelectedCategory] = useState('c-all');
   const [searchTerm, setSearchTerm] = useState('');
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   
+  // Partial Payment State (Conta Separada)
+  const [isPartialPayment, setIsPartialPayment] = useState(false);
+  const [partialPaymentModalOpen, setPartialPaymentModalOpen] = useState(false);
+  const [partialItems, setPartialItems] = useState<{productId: string, quantity: number, price: number, productName: string}[]>([]);
+
   // WhatsApp Share State
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
   const [customerPhone, setCustomerPhone] = useState('');
@@ -23,6 +28,10 @@ export const OrderView = ({ tableId, onBack }: Props) => {
   
   // Payment State
   const [includeService, setIncludeService] = useState(true);
+  const [customServiceFee, setCustomServiceFee] = useState<number | null>(null);
+  const [isEditingService, setIsEditingService] = useState(false);
+  const [editServiceInput, setEditServiceInput] = useState('');
+
   const [cashReceived, setCashReceived] = useState<string>('');
   const [showCashInput, setShowCashInput] = useState(false);
 
@@ -40,7 +49,17 @@ export const OrderView = ({ tableId, onBack }: Props) => {
   // Prompt states
   const [resetTableModalOpen, setResetTableModalOpen] = useState(false);
   const [itemToRemove, setItemToRemove] = useState<string | null>(null);
+  const [itemToPay, setItemToPay] = useState<{productName: string, maxQuantity: number, price: number, productId: string} | null>(null);
+  const [payQuantity, setPayQuantity] = useState(1);
+  const [paidReceiptData, setPaidReceiptData] = useState<any>(null);
   const [cashError, setCashError] = useState('');
+
+  // Toast
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const showToast = (msg: string) => {
+      setToastMessage(msg);
+      setTimeout(() => setToastMessage(null), 3000);
+  };
 
   const table = tables.find(t => t.id === tableId);
   const order = orders.find(o => o.id === table?.currentOrderId);
@@ -58,7 +77,15 @@ export const OrderView = ({ tableId, onBack }: Props) => {
     normalizeString(p.name).includes(normalizeString(searchTerm))
   );
 
-  const finalTotal = includeService ? (order.subtotal * 1.1) : order.subtotal;
+  const partialSubtotal = partialItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const currentSubtotal = isPartialPayment ? partialSubtotal : order.subtotal;
+  
+  const calculatedServiceFee = currentSubtotal * 0.1;
+  const activeServiceFee = includeService 
+      ? (customServiceFee !== null ? customServiceFee : calculatedServiceFee)
+      : 0;
+
+  const finalTotal = currentSubtotal + activeServiceFee;
   const changeAmount = cashReceived ? parseFloat(cashReceived) - finalTotal : 0;
   const waiterName = useApp().users.find(u => u.id === order.waiterId)?.name;
 
@@ -75,8 +102,34 @@ export const OrderView = ({ tableId, onBack }: Props) => {
             return;
         }
     }
-    closeAccount(tableId, method, includeService);
-    onBack();
+    
+    // Build Receipt Data
+    const receiptData = {
+        isPartial: isPartialPayment,
+        items: isPartialPayment ? partialItems.filter(i => i.quantity > 0) : order.items,
+        subtotal: currentSubtotal,
+        serviceFee: activeServiceFee,
+        total: finalTotal,
+        method: method,
+        cashReceived: cashReceived ? parseFloat(cashReceived) : 0,
+        change: changeAmount,
+        date: new Date()
+    };
+    
+    if (isPartialPayment) {
+        payPartialAccount(tableId, partialItems, method, activeServiceFee);
+        setPaidReceiptData(receiptData);
+        setPaymentModalOpen(false);
+        setIsPartialPayment(false);
+        setShowCashInput(false);
+        setCashReceived('');
+        setCustomServiceFee(null);
+        setPartialItems([]);
+    } else {
+        closeAccount(tableId, method, activeServiceFee);
+        setPaidReceiptData(receiptData);
+        setPaymentModalOpen(false);
+    }
   };
 
   const handleResetTable = (e: React.MouseEvent) => {
@@ -109,7 +162,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
 
   const handleSendWhatsApp = async () => {
     if (!customerPhone) {
-        alert("Preencha o telefone do cliente.");
+        showToast("Preencha o telefone do cliente.");
         return;
     }
     
@@ -123,7 +176,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
     
     setIsGeneratingReceipt(true);
     let receiptEl = document.getElementById('receipt-print-area');
-    
+
     if (receiptEl) {
         try {
             // Need to temporarily show the receipt element to allow html2canvas to render it properly
@@ -166,7 +219,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                     a.click();
                     URL.revokeObjectURL(url);
                     
-                    alert("A imagem foi baixada. Você pode anexá-la na conversa do WhatsApp.");
+                    showToast("A imagem foi baixada. Você pode anexá-la na conversa do WhatsApp.");
                     window.open(`https://wa.me/55${customerPhone}?text=Ol%C3%A1%20${encodeURIComponent(customerName)}%2C%20segue%20em%20anexo%20o%20seu%20cupom%20eletr%C3%B4nico%20do%20Pier%20do%20Costa!`);
                     setWhatsappModalOpen(false);
                 }
@@ -175,13 +228,20 @@ export const OrderView = ({ tableId, onBack }: Props) => {
         } catch (error) {
             console.error(error);
             setIsGeneratingReceipt(false);
-            alert("Erro ao gerar cupom.");
+            showToast("Erro ao gerar cupom.");
         }
     }
   };
 
   return (
     <>
+    {/* Toast Message */}
+    {toastMessage && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[300] bg-pier-green text-pier-900 px-6 py-3 rounded-xl font-bold shadow-2xl flex items-center gap-2 animate-fade-in">
+            <span>{toastMessage}</span>
+        </div>
+    )}
+
     {/* Delete Item Modal */}
     {itemToRemove && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
@@ -211,7 +271,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
 
     {/* Reset Table Modal */}
     {resetTableModalOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in print:hidden">
             <div className="bg-slate-900 border border-red-500/30 p-8 rounded-2xl w-full max-w-md shadow-2xl text-center">
                 <h3 className="text-2xl font-bold text-white mb-2">Reiniciar Mesa?</h3>
                 <p className="text-slate-400 mb-8">Isso cancelará o pedido aberto e liberará a mesa. Produtos retornarão ao estoque.</p>
@@ -227,6 +287,57 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                         className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl shadow-lg transition-all text-sm"
                     >
                         REINICIAR
+                    </button>
+                </div>
+            </div>
+        </div>
+    )}
+
+    {/* Item Quantity to Pay Modal */}
+    {itemToPay && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in print:hidden">
+            <div className="bg-slate-900 border border-pier-neon/30 p-8 rounded-2xl w-full max-w-sm shadow-2xl">
+                <h3 className="text-xl font-bold text-white mb-2 text-center">Selecionar Quantidade</h3>
+                <p className="text-slate-400 mb-6 text-sm text-center">
+                    Quantos <span className="text-pier-neon font-bold">{itemToPay.productName}</span> deseja separar para pagamento? (Máximo: {itemToPay.maxQuantity})
+                </p>
+
+                <div className="flex items-center justify-center gap-6 mb-8">
+                    <button 
+                        onClick={() => setPayQuantity(Math.max(1, payQuantity - 1))}
+                        className="w-14 h-14 rounded-full bg-slate-800 border border-white/10 hover:border-pier-neon/50 text-white flex items-center justify-center active:scale-95 transition-all outline-none"
+                    >
+                        <Minus size={24} />
+                    </button>
+                    <div className="flex flex-col items-center">
+                        <span className="text-4xl font-mono font-bold text-white w-16 text-center">{payQuantity}</span>
+                        <span className="text-sm font-bold text-pier-neon mt-2">R$ {(payQuantity * itemToPay.price).toFixed(2)}</span>
+                    </div>
+                    <button 
+                        onClick={() => setPayQuantity(Math.min(itemToPay.maxQuantity, payQuantity + 1))}
+                        className="w-14 h-14 rounded-full bg-slate-800 border border-white/10 hover:border-pier-neon/50 text-white flex items-center justify-center active:scale-95 transition-all outline-none"
+                    >
+                        <Plus size={24} />
+                    </button>
+                </div>
+
+                <div className="flex gap-4">
+                    <button 
+                        onClick={() => setItemToPay(null)}
+                        className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all text-sm"
+                    >
+                        CANCELAR
+                    </button>
+                    <button 
+                        onClick={() => {
+                            setPartialItems([{productId: itemToPay.productId, quantity: payQuantity, price: itemToPay.price, productName: itemToPay.productName}]);
+                            setIsPartialPayment(true);
+                            setItemToPay(null);
+                            setPaymentModalOpen(true);
+                        }}
+                        className="flex-1 py-4 bg-gradient-to-r from-pier-neon to-pier-green text-black font-bold rounded-xl shadow-lg transition-all text-sm uppercase"
+                    >
+                        PAGAR
                     </button>
                 </div>
             </div>
@@ -372,9 +483,9 @@ export const OrderView = ({ tableId, onBack }: Props) => {
             </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0 scrollbar-thin">
-            {order.items.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-slate-500 opacity-30 select-none">
+        <div className="flex-1 w-full flex flex-col overflow-y-auto scrollbar-thin p-3 space-y-2 min-h-0">
+                {order.items.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-500 opacity-30 select-none py-10">
                     <Receipt size={48} className="mb-2 stroke-1" />
                     <p className="text-sm font-light">Nenhum item lançado</p>
                 </div>
@@ -404,6 +515,21 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                                 >
                                     <Trash2 size={14} /> EXCLUIR
                                 </button>
+                                <button 
+                                    onClick={() => {
+                                        if (item.quantity === 1) {
+                                            setPartialItems([{productId: item.productId, quantity: 1, price: item.price, productName: item.productName}]);
+                                            setIsPartialPayment(true);
+                                            setPaymentModalOpen(true);
+                                        } else {
+                                            setItemToPay({productName: item.productName, maxQuantity: item.quantity, price: item.price, productId: item.productId});
+                                            setPayQuantity(1);
+                                        }
+                                    }}
+                                    className="px-3 h-10 flex items-center justify-center gap-1 text-pier-neon hover:bg-pier-neon/20 transition-colors bg-pier-neon/10 font-bold text-xs border-l border-white/5"
+                                >
+                                    <Banknote size={14} /> PAGAR
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -429,27 +555,71 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                     ))}
                 </div>
             )}
-        </div>
 
-        <div className="shrink-0 p-4 bg-slate-900 border-t border-white/10 shadow-[0_-5px_20px_rgba(0,0,0,0.2)] z-10">
-            <div className="space-y-2 text-sm mb-4">
+            <div className="shrink-0 p-4 bg-slate-900 border-t border-white/10 shadow-[0_-5px_20px_rgba(0,0,0,0.2)] z-10 mt-auto">
+                <div className="space-y-2 text-sm mb-4">
                 <div className="flex justify-between text-slate-400 text-xs mt-2">
                     <span className="text-sm">Subtotal</span>
                     <span className="font-mono text-sm">R$ {order.subtotal.toFixed(2)}</span>
                 </div>
                 
-                <button 
-                    onClick={() => setIncludeService(!includeService)}
-                    className={`w-full flex justify-between items-center p-3 mt-2 rounded-xl border transition-all ${includeService ? 'bg-pier-neon/10 border-pier-neon text-pier-neon' : 'bg-slate-800/50 border-white/10 text-slate-400 hover:bg-slate-700/50'}`}
-                >
-                    <div className="flex items-center gap-2">
+                <div className={`w-full flex justify-between items-center p-3 mt-2 rounded-xl border transition-all ${includeService ? 'bg-pier-neon/10 border-pier-neon text-pier-neon' : 'bg-slate-800/50 border-white/10 text-slate-400 hover:bg-slate-700/50'}`}>
+                    <div 
+                        className="flex items-center gap-2 cursor-pointer flex-1"
+                        onClick={() => setIncludeService(!includeService)}
+                    >
                         <div className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-colors ${includeService ? 'bg-pier-neon border-pier-neon' : 'border-slate-500'}`}>
                             {includeService && <div className="w-2 h-2 bg-slate-900 rounded-[2px]" />}
                         </div>
-                        <span className="font-bold text-sm">Serviço (10%)</span>
+                        <span className="font-bold text-sm">Serviço {customServiceFee === null ? '(10%)' : '(Customizado)'}</span>
                     </div>
-                    <span className="font-mono font-bold">R$ {(order.subtotal * 0.1).toFixed(2)}</span>
-                </button>
+                    {includeService && (
+                        <div className="flex items-center gap-2">
+                             {isEditingService ? (
+                                 <div className="flex items-center gap-1">
+                                     <input 
+                                         type="number"
+                                         className="w-20 bg-black/50 border border-pier-neon rounded px-2 py-1 text-right font-mono text-sm text-pier-neon outline-none"
+                                         value={editServiceInput}
+                                         autoFocus
+                                         onChange={e => setEditServiceInput(e.target.value)}
+                                     />
+                                     <button 
+                                         onClick={() => {
+                                             const val = parseFloat(editServiceInput);
+                                             if (!isNaN(val) && val >= 0) {
+                                                setCustomServiceFee(val);
+                                             } else {
+                                                setCustomServiceFee(null); // revert to 10%
+                                             }
+                                             setIsEditingService(false);
+                                         }}
+                                         className="bg-pier-neon text-slate-900 px-2 py-1 rounded text-xs font-bold"
+                                     >
+                                         OK
+                                     </button>
+                                 </div>
+                             ) : (
+                                 <div className="flex items-center gap-2">
+                                     <span className="font-mono font-bold">R$ {activeServiceFee.toFixed(2)}</span>
+                                     <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditServiceInput(activeServiceFee.toFixed(2));
+                                            setIsEditingService(true);
+                                        }}
+                                        className="text-pier-neon/70 hover:text-white"
+                                     >
+                                         <Edit2 size={14} />
+                                     </button>
+                                 </div>
+                             )}
+                        </div>
+                    )}
+                    {!includeService && (
+                        <span className="font-mono font-bold text-slate-500">R$ 0.00</span>
+                    )}
+                </div>
 
                 <div className="flex justify-between text-xl font-bold text-white pt-3 border-t border-white/10 items-end mt-2">
                     <span>Total</span>
@@ -463,7 +633,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                     className="w-full p-4 rounded-xl border border-pier-neon/30 text-pier-neon bg-pier-neon/5 hover:bg-pier-neon/20 font-bold flex items-center justify-center gap-2 transition-colors"
                 >
                     <Printer size={20} />
-                    IMPRIMIR VIA DO CLIENTE {includeService ? 'COM 10%' : 'SEM TAXA'}
+                    IMPRIMIR VIA DO CLIENTE {includeService ? (customServiceFee !== null ? '(SERV. EDITADO)' : '(COM 10%)') : '(SEM TAXA)'}
                 </button>
                 <button
                     onClick={() => setWhatsappModalOpen(true)}
@@ -474,6 +644,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                 </button>
                 <button 
                     onClick={() => {
+                        setIsPartialPayment(false);
                         setShowCashInput(false);
                         setPaymentModalOpen(true);
                     }}
@@ -484,11 +655,12 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                 </button>
             </div>
         </div>
+        </div>
       </div>
 
       {/* WhatsApp Modal */}
       {whatsappModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in print:hidden">
               <div className="glass-panel w-full max-w-sm rounded-2xl p-6 border border-white/10 animate-scale-in">
                   <div className="flex justify-between items-start mb-6">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -548,7 +720,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                       
                       <button 
                         onClick={handleSendWhatsApp}
-                        disabled={isGeneratingReceipt}
+                        disabled={isGeneratingReceipt || !customerPhone}
                         className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-400 text-black font-bold text-lg py-4 rounded-xl transition-all disabled:opacity-50"
                       >
                           {isGeneratingReceipt ? 'GERANDO CUPOM...' : 'ENVIAR CUPOM'}
@@ -561,24 +733,158 @@ export const OrderView = ({ tableId, onBack }: Props) => {
           </div>
       )}
 
+      {/* Success & Print Modal */}
+      {paidReceiptData && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 print:hidden animate-fade-in">
+              <div className="bg-slate-900 border border-pier-neon p-8 rounded-3xl w-full max-w-sm shadow-[0_0_50px_rgba(34,211,238,0.2)] text-center">
+                  <div className="w-20 h-20 bg-pier-neon/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-pier-neon"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                  </div>
+                  <h2 className="text-3xl font-bold text-white mb-2">Pago com Sucesso!</h2>
+                  <p className="text-slate-400 mb-8">
+                     Valor total: <span className="text-white font-bold text-lg">R$ {paidReceiptData.total.toFixed(2)}</span>
+                  </p>
+
+                  <div className="flex flex-col gap-3">
+                      <button 
+                          onClick={() => window.print()}
+                          className="w-full py-4 rounded-xl bg-gradient-to-r from-pier-neon to-pier-green text-black font-bold text-lg uppercase flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95"
+                      >
+                          <Printer size={24} />
+                          Imprimir Via do Cliente
+                      </button>
+                      <button 
+                          onClick={() => {
+                              setPaidReceiptData(null);
+                              if (!paidReceiptData.isPartial) {
+                                  onBack();
+                              }
+                          }}
+                          className="w-full py-4 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold transition-all"
+                      >
+                          FECHAR
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* Payment Modal */}
       {paymentModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
-              <div className="glass-panel w-full max-w-2xl rounded-2xl p-6 border border-white/10 animate-scale-in">
-                  <div className="flex justify-between items-start mb-6">
-                    <h2 className="text-2xl font-bold text-white">Pagamento</h2>
-                    <button onClick={() => setShowSplitModal(true)} className="flex items-center gap-2 text-pier-neon hover:text-white border border-pier-neon/30 px-3 py-1.5 rounded-lg hover:bg-pier-neon/20 transition-all text-sm">
-                        <Users size={16} /> Dividir
-                    </button>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 print:hidden">
+              <div className="glass-panel w-full max-w-2xl rounded-2xl p-6 border border-white/10 animate-scale-in flex flex-col max-h-[90vh]">
+                  <div className="flex justify-between items-start mb-4 shrink-0">
+                    <h2 className="text-2xl font-bold text-white">Pagamento {isPartialPayment && <span className="text-pier-neon">(Conta Separada)</span>}</h2>
+                    <div className="flex gap-2">
+                    {isPartialPayment && (
+                        <button onClick={handlePrintConference} className="flex items-center gap-2 text-pier-neon hover:text-white border border-pier-neon/30 px-3 py-1.5 rounded-lg hover:bg-pier-neon/20 transition-all text-sm">
+                            <Printer size={16} /> Imprimir Via
+                        </button>
+                    )}
+                    {!isPartialPayment && (
+                        <>
+                            <button onClick={handlePrintConference} className="flex items-center gap-2 text-pier-neon hover:text-white border border-pier-neon/30 px-3 py-1.5 rounded-lg hover:bg-pier-neon/20 transition-all text-sm">
+                                <Printer size={16} /> Imprimir Via
+                            </button>
+                            <button onClick={() => {
+                                setPartialItems(order.items.map(i => ({productId: i.productId, quantity: 0, price: i.price, productName: i.productName})));
+                                setPartialPaymentModalOpen(true);
+                                setPaymentModalOpen(false);
+                            }} className="flex items-center gap-2 text-orange-400 hover:text-white border border-orange-400/30 px-3 py-1.5 rounded-lg hover:bg-orange-500/20 transition-all text-sm">
+                                Fechar Separado
+                            </button>
+                            <button onClick={() => setShowSplitModal(true)} className="flex items-center gap-2 text-pier-neon hover:text-white border border-pier-neon/30 px-3 py-1.5 rounded-lg hover:bg-pier-neon/20 transition-all text-sm">
+                                <Users size={16} /> Dividir Fixo
+                            </button>
+                        </>
+                    )}
+                    </div>
                   </div>
+
+                  <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin min-h-0">
+                      {/* List of items being paid */}
+                      <div className="space-y-2 mb-6 bg-black/20 p-3 rounded-xl border border-white/5">
+                          {(isPartialPayment ? partialItems.filter(i => i.quantity > 0) : order.items).map((item, idx) => (
+                              <div key={idx} className="flex justify-between items-center text-sm">
+                                  <span className="text-slate-300"><span className="text-pier-neon font-bold mr-2">{isPartialPayment ? item.quantity : item.quantity}x</span> {item.productName}</span>
+                                  <span className="text-slate-400 font-mono">R$ {((isPartialPayment ? item.quantity : item.quantity) * item.price).toFixed(2)}</span>
+                              </div>
+                          ))}
+                          {isPartialPayment && partialItems.filter(i => i.quantity > 0).length === 0 && (
+                              <p className="text-center text-slate-500 text-sm py-2">Nenhum item selecionado</p>
+                          )}
+                          {!isPartialPayment && order.items.length === 0 && (
+                              <p className="text-center text-slate-500 text-sm py-2">Mesa vazia</p>
+                          )}
+                      </div>
                   
-                  <div className="text-center mb-8">
+                  <div className="text-center mb-6">
                       <p className="text-slate-400 mb-1">Valor Total</p>
                       <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pier-neon to-pier-green font-mono">
                         R$ {finalTotal.toFixed(2)}
                       </h1>
                   </div>
 
+                  <div className={`w-full flex justify-between items-center p-3 mb-6 rounded-xl border transition-all ${includeService ? 'bg-pier-neon/10 border-pier-neon text-pier-neon' : 'bg-slate-800/50 border-white/10 text-slate-400 hover:bg-slate-700/50'}`}>
+                    <div 
+                        className="flex items-center gap-2 cursor-pointer flex-1"
+                        onClick={() => setIncludeService(!includeService)}
+                    >
+                        <div className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-colors ${includeService ? 'bg-pier-neon border-pier-neon' : 'border-slate-500'}`}>
+                            {includeService && <div className="w-2 h-2 bg-slate-900 rounded-[2px]" />}
+                        </div>
+                        <span className="font-bold text-sm">Serviço {customServiceFee === null ? '(10%)' : '(Customizado)'}</span>
+                    </div>
+                    {includeService && (
+                        <div className="flex items-center gap-2">
+                             {isEditingService ? (
+                                 <div className="flex items-center gap-1">
+                                     <input 
+                                         type="number"
+                                         className="w-20 bg-black/50 border border-pier-neon rounded px-2 py-1 text-right font-mono text-sm text-pier-neon outline-none"
+                                         value={editServiceInput}
+                                         autoFocus
+                                         onChange={e => setEditServiceInput(e.target.value)}
+                                     />
+                                     <button 
+                                         onClick={() => {
+                                             const val = parseFloat(editServiceInput);
+                                             if (!isNaN(val) && val >= 0) {
+                                                setCustomServiceFee(val);
+                                             } else {
+                                                setCustomServiceFee(null); // revert to 10%
+                                             }
+                                             setIsEditingService(false);
+                                         }}
+                                         className="bg-pier-neon text-slate-900 px-2 py-1 rounded text-xs font-bold"
+                                     >
+                                         OK
+                                     </button>
+                                 </div>
+                             ) : (
+                                 <div className="flex items-center gap-2">
+                                     <span className="font-mono font-bold">R$ {activeServiceFee.toFixed(2)}</span>
+                                     <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditServiceInput(activeServiceFee.toFixed(2));
+                                            setIsEditingService(true);
+                                        }}
+                                        className="text-pier-neon/70 hover:text-white"
+                                     >
+                                         <Edit2 size={14} />
+                                     </button>
+                                 </div>
+                             )}
+                        </div>
+                    )}
+                    {!includeService && (
+                        <span className="font-mono font-bold text-slate-500">R$ 0.00</span>
+                    )}
+                </div>
+                </div>
+
+                <div className="shrink-0 pt-4 border-t border-white/10 mt-auto">
                   {!showCashInput ? (
                       <div className="grid grid-cols-2 gap-3 mb-6">
                         <button onClick={() => handleCheckout('CARD_CREDIT')} className="p-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-white/5 hover:border-pier-neon/50 flex flex-col items-center gap-2 transition-all">
@@ -649,17 +955,107 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                   )}
 
                   {!showCashInput && (
-                    <button onClick={() => setPaymentModalOpen(false)} className="w-full py-2 text-slate-400 hover:text-white text-sm">
-                        Cancelar
-                    </button>
+                      <div className="flex flex-col gap-2">
+                        {isPartialPayment && (
+                            <button
+                                onClick={handlePrintConference}
+                                className="w-full p-3 rounded-xl border border-pier-neon/30 text-pier-neon bg-pier-neon/5 hover:bg-pier-neon/20 font-bold flex items-center justify-center gap-2 transition-colors mb-2"
+                            >
+                                <Printer size={20} />
+                                IMPRIMIR VIA (SEPARADA)
+                            </button>
+                        )}
+                        <button onClick={() => { setPaymentModalOpen(false); setIsPartialPayment(false); setCustomServiceFee(null); }} className="w-full py-2 text-slate-400 hover:text-white text-sm">
+                            Cancelar
+                        </button>
+                      </div>
                   )}
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Partial Payment Selected Items Modal */}
+      {partialPaymentModalOpen && (
+          <div className="fixed inset-0 z-[105] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 print:hidden">
+              <div className="glass-panel w-full max-w-md rounded-2xl p-6 border border-white/10 animate-scale-in flex flex-col max-h-[90vh]">
+                  <div className="flex justify-between items-center mb-4 shrink-0">
+                      <h3 className="text-xl font-bold text-white">Conta Separada</h3>
+                      <button onClick={() => setPartialPaymentModalOpen(false)}><X size={20} className="text-slate-400" /></button>
+                  </div>
+                  
+                  <p className="text-slate-400 text-sm mb-4 shrink-0">Selecione os itens e as quantidades que deseja pagar agora:</p>
+
+                  <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin space-y-3 mb-6">
+                      {partialItems.map((pItem, idx) => {
+                          const originalItem = order.items.find(i => i.productId === pItem.productId);
+                          if (!originalItem) return null;
+                          return (
+                              <div key={idx} className="flex flex-col gap-2 p-3 rounded-xl bg-slate-800/50 border border-white/5">
+                                  <div className="flex justify-between items-start">
+                                      <span className="font-bold text-white text-sm">{pItem.productName}</span>
+                                      <span className="text-pier-neon font-mono text-xs">R$ {pItem.price.toFixed(2)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center mt-1">
+                                      <span className="text-xs text-slate-400">Restante na mesa: {originalItem.quantity - pItem.quantity}</span>
+                                      <div className="flex items-center gap-3">
+                                          <button 
+                                            onClick={() => {
+                                                const newItems = [...partialItems];
+                                                newItems[idx].quantity = Math.max(0, newItems[idx].quantity - 1);
+                                                setPartialItems(newItems);
+                                            }}
+                                            className="w-8 h-8 rounded-lg bg-black border border-white/10 flex items-center justify-center text-white"
+                                          >
+                                              <Minus size={14} />
+                                          </button>
+                                          <span className="font-bold text-white min-w-[20px] text-center">{pItem.quantity}</span>
+                                          <button 
+                                            onClick={() => {
+                                                const newItems = [...partialItems];
+                                                newItems[idx].quantity = Math.min(originalItem.quantity, newItems[idx].quantity + 1);
+                                                setPartialItems(newItems);
+                                            }}
+                                            className="w-8 h-8 rounded-lg bg-black border border-white/10 flex items-center justify-center text-white"
+                                          >
+                                              <Plus size={14} />
+                                          </button>
+                                      </div>
+                                  </div>
+                              </div>
+                          );
+                      })}
+                  </div>
+
+                  <div className="shrink-0 flex gap-3">
+                      <button 
+                          onClick={() => setPartialPaymentModalOpen(false)}
+                          className="px-4 py-3 bg-white/5 text-slate-300 font-bold rounded-xl"
+                      >
+                          Voltar
+                      </button>
+                      <button 
+                          onClick={() => {
+                              const hasItems = partialItems.some(i => i.quantity > 0);
+                              if (hasItems) {
+                                  setIsPartialPayment(true);
+                                  setPartialPaymentModalOpen(false);
+                                  setPaymentModalOpen(true);
+                              }
+                          }}
+                          disabled={!partialItems.some(i => i.quantity > 0)}
+                          className="flex-1 bg-pier-neon text-pier-900 font-bold py-3 rounded-xl disabled:opacity-50"
+                      >
+                          Ir para Pagamento
+                      </button>
+                  </div>
               </div>
           </div>
       )}
 
       {/* Split Bill Modal */}
       {showSplitModal && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 print:hidden">
               <div className="glass-panel p-6 rounded-2xl w-full max-w-sm border border-white/10">
                   <div className="flex justify-between items-center mb-4">
                       <h3 className="text-xl font-bold text-white">Dividir Conta</h3>
@@ -711,7 +1107,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-1"><circle cx="12" cy="5" r="3"></circle><line x1="12" y1="22" x2="12" y2="8"></line><path d="M5 12H2a10 10 0 0 0 20 0h-3"></path></svg>
                 <h1 className="text-sm font-bold uppercase">PIER DO COSTA</h1>
                 <p>Restaurante & Bar</p>
-                <p>{new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</p>
+                <p>{(paidReceiptData ? paidReceiptData.date : new Date()).toLocaleDateString()} {(paidReceiptData ? paidReceiptData.date : new Date()).toLocaleTimeString()}</p>
             </div>
             
             <div className="mb-3 border-b border-black pb-1 border-dashed">
@@ -720,7 +1116,9 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                     <span className="truncate ml-2">{table.customName}</span>
                 </div>
                 <div>Garçom: {waiterName}</div>
-                <div className="font-bold text-center mt-1">Conferência de Conta</div>
+                <div className="font-bold text-center mt-1 text-xs">
+                    {paidReceiptData ? 'Comprovante de Pagamento' : 'Conferência de Conta'}
+                </div>
             </div>
 
             <div className="mb-3">
@@ -729,11 +1127,11 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                     <span className="flex-1 truncate">Item</span>
                     <span className="w-10 text-right">Total</span>
                 </div>
-                {order.items.map((item, idx) => (
+                {(paidReceiptData ? paidReceiptData.items : (isPartialPayment ? partialItems.filter(i => i.quantity > 0) : order.items)).map((item: any, idx: number) => (
                     <div key={idx} className="flex mb-1">
                         <span className="w-6">{item.quantity}</span>
                         <span className="flex-1 truncate pr-1">{item.productName}</span>
-                        <span className="w-10 text-right">{item.total.toFixed(2)}</span>
+                        <span className="w-10 text-right">{(item.price * item.quantity).toFixed(2)}</span>
                     </div>
                 ))}
             </div>
@@ -741,22 +1139,47 @@ export const OrderView = ({ tableId, onBack }: Props) => {
             <div className="border-t border-black border-dashed pt-1 space-y-1">
                 <div className="flex justify-between">
                     <span>Subtotal:</span>
-                    <span>R$ {order.subtotal.toFixed(2)}</span>
+                    <span>R$ {(paidReceiptData ? paidReceiptData.subtotal : currentSubtotal).toFixed(2)}</span>
                 </div>
-                {includeService && (
+                {(paidReceiptData ? paidReceiptData.serviceFee : activeServiceFee) > 0 && (
                     <div className="flex justify-between">
-                        <span>Serviço (10%):</span>
-                        <span>R$ {(order.subtotal * 0.1).toFixed(2)}</span>
+                        <span>Serviço:</span>
+                        <span>R$ {(paidReceiptData ? paidReceiptData.serviceFee : activeServiceFee).toFixed(2)}</span>
                     </div>
                 )}
                 <div className="flex justify-between font-bold text-sm mt-1 pt-1 border-t border-black">
                     <span>TOTAL:</span>
-                    <span>R$ {finalTotal.toFixed(2)}</span>
+                    <span>R$ {(paidReceiptData ? paidReceiptData.total : finalTotal).toFixed(2)}</span>
                 </div>
             </div>
 
+            {paidReceiptData && (
+                <div className="mt-3 border-t border-black border-dashed pt-2 space-y-1">
+                    <div className="flex justify-between">
+                        <span>Método pgto:</span>
+                        <span className="font-bold">
+                            {paidReceiptData.method === 'CARD_CREDIT' ? 'CRÉDITO' :
+                             paidReceiptData.method === 'CARD_DEBIT' ? 'DÉBITO' :
+                             paidReceiptData.method === 'PIX' ? 'PIX' : 'DINHEIRO'}
+                        </span>
+                    </div>
+                    {paidReceiptData.method === 'CASH' && (
+                        <>
+                            <div className="flex justify-between">
+                                <span>Valor recebido:</span>
+                                <span>R$ {paidReceiptData.cashReceived.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Troco:</span>
+                                <span>R$ {paidReceiptData.change.toFixed(2)}</span>
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+
             <div className="text-center mt-6 text-[9px]">
-                <p>*** NÃO É DOCUMENTO FISCAL ***</p>
+                <p>{paidReceiptData ? 'VÁLIDO COMO RECIBO' : '*** NÃO É DOCUMENTO FISCAL ***'}</p>
                 <p>Obrigado pela preferência!</p>
             </div>
         </div>

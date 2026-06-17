@@ -35,7 +35,8 @@ interface AppContextData {
   requestCheckout: (tableId: string) => void;
   addToOrder: (tableId: string, product: Product, quantity: number) => void;
   removeFromOrder: (tableId: string, productId: string, removeAll?: boolean) => void;
-  closeAccount: (tableId: string, paymentMethod: any, includeServiceFee: boolean) => void;
+  closeAccount: (tableId: string, paymentMethod: any, serviceFeeAmount: number) => void;
+  payPartialAccount: (tableId: string, paidItems: {productId: string, quantity: number}[], paymentMethod: any, serviceFeeAmount: number) => void;
   payCommission: (logId: string) => void;
   updateCommission: (logId: string, updates: Partial<CommissionLog>) => void;
   deleteCommission: (logId: string) => void;
@@ -184,8 +185,23 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
             const { data, error } = await supabase.from('app_state').select('data').eq('id', 1).maybeSingle();
             if (data && data.data) {
                 parsedCloud = data.data;
-                lastCloudSyncDate = new Date(parsedCloud.lastSavedAt || 0).getTime();
-                applyState(parsedCloud, false);
+                const cloudTime = new Date(parsedCloud.lastSavedAt || 0).getTime();
+                const localTime = parsedLocal && parsedLocal.lastSavedAt ? new Date(parsedLocal.lastSavedAt).getTime() : 0;
+                
+                lastCloudSyncDate = cloudTime;
+
+                // Apenas sobrescreve o Local com o Cloud se o Cloud for MAIS NOVO ou IGUAL
+                // (Isso evita que um reload imediato desfaça uma edição local que ainda não subiu)
+                if (cloudTime >= localTime) {
+                    applyState(parsedCloud, false);
+                } else if (localTime > cloudTime) {
+                    // Se o Local for mais novo e ainda não tínhamos subido, sobe agora!
+                    await supabase.from('app_state').upsert({ id: 1, data: parsedLocal, updated_at: new Date().toISOString() });
+                    lastCloudSyncDate = localTime;
+                }
+            } else if (parsedLocal) {
+                // Não tem nada no cloud mas tem local (primeiro sync)
+                await supabase.from('app_state').upsert({ id: 1, data: parsedLocal, updated_at: new Date().toISOString() });
             }
         } catch (e) {
             console.error("Failed to load from cloud", e);
@@ -271,13 +287,13 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         } finally {
             pendingSyncCount = Math.max(0, pendingSyncCount - 1);
         }
-    }, 2000);
+    }, 500);
 
     return () => {
         clearTimeout(timeout);
         pendingSyncCount = Math.max(0, pendingSyncCount - 1);
     };
-  }, [currentUser, isRegisterOpen, registerBalance, users, products, tables, orders, commissionLogs, expenses, purchases]);
+  }, [currentUser, isRegisterOpen, registerBalance, users, products, tables, orders, customers, commissionLogs, expenses, purchases]);
 
 
   const login = (pin: string) => {
@@ -497,7 +513,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       }));
   };
 
-  const closeAccount = (tableId: string, paymentMethod: any, includeServiceFee: boolean) => {
+  const closeAccount = (tableId: string, paymentMethod: any, serviceFeeAmount: number) => {
     const table = tables.find(t => t.id === tableId);
     if (!table || !table.currentOrderId) return;
 
@@ -505,7 +521,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     if (!currentOrder) return;
 
     // Finalize amounts
-    const finalServiceFee = includeServiceFee ? currentOrder.subtotal * 0.10 : 0;
+    const finalServiceFee = serviceFeeAmount;
     const finalTotal = currentOrder.subtotal + finalServiceFee - currentOrder.discount;
 
     // Update Order
@@ -530,7 +546,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     }));
 
     // Process Commission if fee included
-    if (includeServiceFee && finalServiceFee > 0) {
+    if (finalServiceFee > 0) {
       const commissionLog: CommissionLog = {
         id: `com-${Date.now()}`,
         waiterId: currentOrder.waiterId,
@@ -548,6 +564,113 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
           : u
       ));
     }
+  };
+
+  const payPartialAccount = (tableId: string, paidItems: {productId: string, quantity: number}[], paymentMethod: any, serviceFeeAmount: number) => {
+    const table = tables.find(t => t.id === tableId);
+    if (!table || !table.currentOrderId) return;
+    
+    // Process the payment
+    setOrders(prev => {
+        const orderIdx = prev.findIndex(o => o.id === table.currentOrderId);
+        if (orderIdx < 0) return prev;
+        
+        const currentOrder = prev[orderIdx];
+        let newItems = [...currentOrder.items];
+        const partialOrderItems: OrderItem[] = [];
+        let partialSubtotal = 0;
+
+        paidItems.forEach(paid => {
+            const itemIdx = newItems.findIndex(i => i.productId === paid.productId);
+            if (itemIdx >= 0) {
+                const item = newItems[itemIdx];
+                const qtyToPay = Math.min(item.quantity, paid.quantity);
+                if (qtyToPay > 0) {
+                    partialOrderItems.push({
+                        ...item,
+                        quantity: qtyToPay,
+                        total: item.price * qtyToPay
+                    });
+                    partialSubtotal += item.price * qtyToPay;
+                    newItems[itemIdx] = {
+                        ...item,
+                        quantity: item.quantity - qtyToPay,
+                        total: item.price * (item.quantity - qtyToPay)
+                    };
+                }
+            }
+        });
+
+        const remainingItems = newItems.filter(i => i.quantity > 0);
+        const remainingSubtotal = remainingItems.reduce((acc, curr) => acc + curr.total, 0);
+        
+        // When partially paying, we do NOT change the remaining service fee to keep it simple, it's just order.subtotal * something. 
+        // We'll leave it as remainingSubtotal * 0.10 if there was any fee previously (default to 10% for remaining).
+        const remainingServiceFee = currentOrder.serviceFee > 0 ? remainingSubtotal * 0.10 : 0;
+        
+        const partialServiceFee = serviceFeeAmount;
+        const partialTotal = partialSubtotal + partialServiceFee;
+
+        // Deduct Stock right away
+        setProducts(prevProducts => prevProducts.map(p => {
+            const pi = partialOrderItems.find(i => i.productId === p.id);
+            if (pi) return { ...p, stock: Math.max(0, p.stock - pi.quantity) };
+            return p;
+        }));
+
+        if (partialServiceFee > 0) {
+             setCommissionLogs(prevLogs => [...prevLogs, {
+                 id: `com-${Date.now()}-part`,
+                 waiterId: currentOrder.waiterId,
+                 orderId: `partial-${Date.now()}`,
+                 amount: partialServiceFee,
+                 date: new Date(),
+                 status: 'PAID',
+                 type: 'COMMISSION'
+             }]);
+        }
+
+        const updatedCurrentOrder = {
+            ...currentOrder,
+            items: remainingItems,
+            subtotal: remainingSubtotal,
+            serviceFee: remainingServiceFee,
+            total: remainingSubtotal + remainingServiceFee - currentOrder.discount,
+        };
+
+        const newPartialOrder: Order = {
+            id: `partial-${Date.now()}`,
+            tableId,
+            waiterId: currentOrder.waiterId,
+            status: 'CLOSED',
+            items: partialOrderItems,
+            subtotal: partialSubtotal,
+            serviceFee: partialServiceFee,
+            discount: 0,
+            total: partialTotal,
+            paymentMethod,
+            openedAt: currentOrder.openedAt,
+            closedAt: new Date()
+        };
+
+        const newOrdersList = [...prev];
+        newOrdersList[orderIdx] = updatedCurrentOrder;
+        newOrdersList.push(newPartialOrder);
+        
+        // Timeout to check if table should be closed completely
+        setTimeout(() => {
+            setOrders(latestOrders => {
+                 const o = latestOrders.find(lo => lo.id === table.currentOrderId);
+                 if (o && o.items.length === 0 && o.status !== 'CLOSED') {
+                      setTables(tt => tt.map(t => t.id === tableId ? { ...t, status: 'AVAILABLE', currentOrderId: undefined, waiterId: undefined, customName: undefined } : t));
+                      return latestOrders.map(lo => lo.id === o.id ? { ...lo, status: 'CLOSED', closedAt: new Date() } : lo);
+                 }
+                 return latestOrders;
+            });
+        }, 50);
+
+        return newOrdersList;
+    });
   };
 
   const payCommission = (logId: string) => {
@@ -694,7 +817,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   return (
     <AppContext.Provider value={{
       currentUser, login, directLogin, logout, users, products, tables, orders, customers, commissionLogs, expenses, purchases, isRegisterOpen, registerBalance,
-      openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payCommission, updateCommission, deleteCommission, addAdvance, addConsumption, processDirectSale, deleteOrder,
+      openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payPartialAccount, payCommission, updateCommission, deleteCommission, addAdvance, addConsumption, processDirectSale, deleteOrder,
       addUser, updateUser, removeUser, addExpense, updateExpense, removeExpense, addPurchase, updatePurchase, removePurchase, addCustomer, updateCustomer, removeCustomer, resetSystem, resetWaiterCommissions
     }}>
       {children}

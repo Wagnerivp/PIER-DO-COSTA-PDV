@@ -3,20 +3,7 @@ import { useApp } from '../services/AppContext';
 import { DollarSign, CheckCircle, Clock, TrendingUp, Filter, Users, MinusSquare, X, Trash2, Edit2, Coffee } from 'lucide-react';
 import { User, Order, CommissionLog, Product } from '../types';
 
-const WaiterCard = ({ 
-    waiter, 
-    commissionLogs, 
-    orders, 
-    totals, 
-    updateUser, 
-    removeUser, 
-    setAdvanceWaiterId, 
-    setIsAdvanceModalOpen, 
-    resetWaiterCommissions,
-    addConsumption,
-    products,
-    updateProduct
-}: {
+const WaiterCard: React.FC<{
     waiter: User;
     commissionLogs: CommissionLog[];
     orders: Order[];
@@ -29,6 +16,21 @@ const WaiterCard = ({
     addConsumption: any;
     products: Product[];
     updateProduct: any;
+    showToast: (msg: string) => void;
+}> = ({ 
+    waiter, 
+    commissionLogs, 
+    orders, 
+    totals, 
+    updateUser, 
+    removeUser, 
+    setAdvanceWaiterId, 
+    setIsAdvanceModalOpen, 
+    resetWaiterCommissions,
+    addConsumption,
+    products,
+    updateProduct,
+    showToast
 }) => {
     const [activeTab, setActiveTab] = useState<'RESUMO' | 'CONSUMO'>('RESUMO');
     const [consumptionProductId, setConsumptionProductId] = useState('');
@@ -47,7 +49,7 @@ const WaiterCard = ({
         });
 
         setConsumptionProductId('');
-        alert('Consumo lançado com sucesso!');
+        showToast('Consumo lançado com sucesso!');
     };
 
     const consumptionsAndAdvances = commissionLogs.filter(l => l.waiterId === waiter.id && (l.type === 'ADVANCE' || l.type === 'CONSUMPTION'));
@@ -218,6 +220,12 @@ export const WaiterPanel = () => {
   const [advanceDescription, setAdvanceDescription] = useState('');
   const [advanceWaiterId, setAdvanceWaiterId] = useState<string>('');
 
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const showToast = (msg: string) => {
+      setToastMessage(msg);
+      setTimeout(() => setToastMessage(null), 3000);
+  };
+
   // If Manager, show all. If Waiter, show only theirs.
   const isManager = currentUser?.role === 'MANAGER' || currentUser?.role === 'ADMIN';
   
@@ -310,6 +318,12 @@ export const WaiterPanel = () => {
 
   return (
     <div className="space-y-8 animate-fade-in h-full overflow-y-auto pb-8 pr-2 scrollbar-thin">
+        {/* Toast Message */}
+        {toastMessage && (
+            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[300] bg-pier-green text-pier-900 px-6 py-3 rounded-xl font-bold shadow-2xl flex items-center gap-2 animate-fade-in">
+                <span>{toastMessage}</span>
+            </div>
+        )}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <h2 className="text-3xl font-bold text-white">
@@ -413,6 +427,8 @@ export const WaiterPanel = () => {
                                 resetWaiterCommissions={resetWaiterCommissions}
                                 addConsumption={addConsumption}
                                 products={products}
+                                updateProduct={updateProduct}
+                                showToast={showToast}
                             />
                         );
                     })}

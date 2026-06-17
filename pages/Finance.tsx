@@ -15,6 +15,12 @@ export const Finance = () => {
   const [category, setCategory] = useState<Expense['category']>('MAINTENANCE');
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
 
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const showToast = (msg: string) => {
+      setToastMessage(msg);
+      setTimeout(() => setToastMessage(null), 3000);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!description || !amount) return;
@@ -102,6 +108,12 @@ export const Finance = () => {
 
   return (
     <div className="space-y-6 animate-fade-in relative pb-10 max-w-7xl mx-auto">
+      {/* Toast Message */}
+      {toastMessage && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[300] bg-pier-green text-pier-900 px-6 py-3 rounded-xl font-bold shadow-2xl flex items-center gap-2 animate-fade-in">
+              <span>{toastMessage}</span>
+          </div>
+      )}
         <div className="flex justify-between items-center">
             <h2 className="text-3xl font-bold text-white">Gestão Financeira</h2>
             {isManager && (
@@ -332,11 +344,11 @@ export const Finance = () => {
                         <button 
                             onClick={() => {
                                 if (resetSystem(resetPin)) {
-                                    alert('Sistema resetado com sucesso!');
+                                    showToast('Sistema resetado com sucesso!');
                                     setIsResetModalOpen(false);
                                     setResetPin('');
                                 } else {
-                                    alert('Senha incorreta!');
+                                    showToast('Senha incorreta!');
                                 }
                             }}
                             className="flex-1 bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500 hover:text-white py-3 rounded-xl transition-all font-bold"
