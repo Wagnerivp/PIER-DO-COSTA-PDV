@@ -813,6 +813,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                             </button>
                             <button onClick={() => {
                                 setPartialItems(order.items.map(i => ({productId: i.productId, quantity: 0, price: i.price, productName: i.productName})));
+                                setIsPartialPayment(true);
                                 setPartialPaymentModalOpen(true);
                                 setPaymentModalOpen(false);
                             }} className="flex items-center gap-2 text-orange-400 hover:text-white border border-orange-400/30 px-3 py-1.5 rounded-lg hover:bg-orange-500/20 transition-all text-sm">
@@ -1006,7 +1007,15 @@ export const OrderView = ({ tableId, onBack }: Props) => {
               <div className="glass-panel w-full max-w-md rounded-2xl p-6 border border-white/10 animate-scale-in flex flex-col max-h-[90vh]">
                   <div className="flex justify-between items-center mb-4 shrink-0">
                       <h3 className="text-xl font-bold text-white">Conta Separada</h3>
-                      <button onClick={() => setPartialPaymentModalOpen(false)}><X size={20} className="text-slate-400" /></button>
+                      <div className="flex gap-2">
+                          <button onClick={() => {
+                              // Ensures we print the updated partial list
+                              handlePrintConference();
+                          }} className="flex items-center gap-1 text-pier-neon hover:text-white border border-pier-neon/30 px-2 py-1 rounded-lg hover:bg-pier-neon/20 transition-all text-xs">
+                              <Printer size={14} /> Imprimir
+                          </button>
+                          <button onClick={() => setPartialPaymentModalOpen(false)}><X size={20} className="text-slate-400" /></button>
+                      </div>
                   </div>
                   
                   <p className="text-slate-400 text-sm mb-4 shrink-0">Selecione os itens e as quantidades que deseja pagar agora:</p>
