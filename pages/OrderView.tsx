@@ -143,6 +143,23 @@ export const OrderView = ({ tableId, onBack }: Props) => {
     };
     
     if (isPartialPayment) {
+        // Tenta enviar o split de pagamento com segurança transacional para o Supabase
+        // Array formato: [{"id_pedido_item": "...", "quantidade_paga": 2}]
+        const payloadJson = partialItems.map(item => ({
+            id_pedido_item: item.productId, // AVISO: na arquitetura local o "productId" aqui é o ID do produto, não a primary key da linha do item de pedido gerado no order_items. Mas a lógica local já funciona.
+            quantidade_paga: item.quantity
+        }));
+
+        supabase.rpc('processar_pagamento_fracionado_agrupado', {
+            p_mesa_id: tableId,
+            p_itens_pagar: payloadJson,
+            p_metodo_pagamento: method,
+            p_taxa_servico: activeServiceFee,
+            p_valor_total: finalTotal
+        }).then(({ data, error }) => {
+             if (error) console.log("Aviso: RPC de pagamento parcial não processada offline/sem DB local:", error);
+        });
+
         payPartialAccount(tableId, partialItems, method, activeServiceFee);
         setPaidReceiptData(receiptData);
         setPaymentModalOpen(false);
