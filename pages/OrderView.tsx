@@ -539,7 +539,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                             setPartialItems(
                                 order.items
                                     .filter(i => selectedProductIds.includes(i.productId))
-                                    .map(i => ({productId: i.productId, quantity: i.quantity, price: i.price, productName: i.productName}))
+                                    .map(i => ({productId: i.productId, quantity: 1, price: i.price, productName: i.productName}))
                             );
                             setIsPartialPayment(true);
                             setPartialPaymentModalOpen(true);
@@ -548,7 +548,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                         className="w-full bg-gradient-to-r from-pier-neon to-pier-cyan text-black font-black uppercase tracking-wide py-4 rounded-xl shadow-[0_10px_30px_rgba(34,211,238,0.5)] flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all"
                     >
                         <Banknote size={20} />
-                        PAGAR {selectedProductIds.length} ITEN{selectedProductIds.length > 1 ? 'S' : ''} MENU{selectedProductIds.length > 1 ? 'S' : ''}
+                        PAGAR {selectedProductIds.length} ITEN{selectedProductIds.length > 1 ? 'S' : ''} SEPARADO{selectedProductIds.length > 1 ? 'S' : ''}
                     </button>
                 </div>
             )}

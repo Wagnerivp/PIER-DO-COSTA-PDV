@@ -37,7 +37,8 @@ BEGIN
         -- Buscar o item da comanda original
         SELECT * INTO v_linha_item
         FROM public.order_items
-        WHERE id = v_item.id_pedido_item AND order_id = v_order_id AND status = 'PENDING'
+        WHERE product_id = v_item.id_pedido_item AND order_id = v_order_id AND status = 'PENDING'
+        LIMIT 1
         FOR UPDATE; -- Bloqueia a linha para evitar concorrência
 
         IF NOT FOUND THEN
@@ -65,7 +66,7 @@ BEGIN
             UPDATE public.order_items
             SET quantity = v_qtd_restante,
                 total = price * v_qtd_restante
-            WHERE id = v_item.id_pedido_item;
+            WHERE id = v_linha_item.id;
 
             -- 2. Inserir a nova linha clonada representando a porção PAGA
             INSERT INTO public.order_items (
@@ -95,7 +96,7 @@ BEGIN
             -- Quantidade paga é IGUAL a da mesa, apenas conclui o item
             UPDATE public.order_items
             SET status = 'PAID'
-            WHERE id = v_item.id_pedido_item;
+            WHERE id = v_linha_item.id;
         END IF;
 
         -- Dar baixa na tabela de estoque
