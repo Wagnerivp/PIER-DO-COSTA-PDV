@@ -5,50 +5,51 @@ import { Printer, BellOff, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const CashierAlertListener = () => {
-    const { currentUser, tables, requestCheckout } = useApp();
-    const [alert, setAlert] = useState<{id: string, table_id: string, table_number: number, waiter_name: string} | null>(null);
+    const { currentUser, tables, orders, users } = useApp();
+    const [acknowledgedTableIds, setAcknowledgedTableIds] = useState<string[]>([]);
+    const [alert, setAlert] = useState<{table_id: string, table_number: number, waiter_name: string} | null>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
         if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'CASHIER' && currentUser.role !== 'MANAGER')) return;
 
-        const channel = supabase.channel('custom-all-channel')
-            .on(
-                'postgres_changes', 
-                { event: 'INSERT', schema: 'public', table: 'cashier_notifications', filter: "status=eq.PENDING" }, 
-                (payload) => {
-                    const newAlert = payload.new as any;
-                    setAlert(newAlert);
-                    
-                    // Audio alert if possible
-                    try {
-                        const audio = new Audio('/alert.mp3'); // Fallback if exists
-                        audio.play().catch(e => console.log('Audio play ignored without interaction'));
-                    } catch(e) {}
-                }
-            )
-            .subscribe();
+        // Procura a primeira mesa que está com status 'PAYMENT_PENDING' e ainda não foi silenciada no ambiente local do caixa
+        const pendingTable = tables.find(t => t.status === 'PAYMENT_PENDING' && !acknowledgedTableIds.includes(t.id));
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [currentUser]);
+        if (pendingTable) {
+            // Se encontrou, descobre quem é o garçom
+            const relatedOrder = orders.find(o => o.id === pendingTable.currentOrderId);
+            const waiter = users.find(u => u.id === relatedOrder?.waiterId);
+            
+            setAlert({
+                table_id: pendingTable.id,
+                table_number: pendingTable.number,
+                waiter_name: waiter?.name || 'Garçom',
+            });
+            
+            // Audio alert if possible
+            try {
+                const audio = new Audio('/alert.mp3'); 
+                audio.play().catch(e => {});
+            } catch(e) {}
+        } else {
+            // Limpa o alerta local caso a mesa não esteja mais pedindo fechamento
+            setAlert(null);
+        }
+        
+    }, [currentUser, tables, acknowledgedTableIds, orders, users]);
 
-    const handleAcknowledge = async () => {
+    const handleAcknowledge = () => {
         if (!alert) return;
-        const currentAlert = alert;
+        setAcknowledgedTableIds(prev => [...prev, alert.table_id]);
         setAlert(null);
-        await supabase.from('cashier_notifications').update({ status: 'RESOLVED' }).eq('id', currentAlert.id);
     };
 
-    const handlePrintAndAcknowledge = async () => {
+    const handlePrintAndAcknowledge = () => {
         if (!alert) return;
         const currentAlert = alert;
+        setAcknowledgedTableIds(prev => [...prev, currentAlert.table_id]);
         setAlert(null);
-        await supabase.from('cashier_notifications').update({ status: 'RESOLVED' }).eq('id', currentAlert.id);
-        
-        // Ensure table state is updated to PAYMENT_PENDING visually if needed
-        requestCheckout(currentAlert.table_id);
         
         // Navigate to the tables screen so cashier can click the table and print
         navigate('/tables');

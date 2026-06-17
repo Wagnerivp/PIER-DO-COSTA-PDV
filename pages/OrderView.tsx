@@ -51,8 +51,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
   // Prompt states
   const [resetTableModalOpen, setResetTableModalOpen] = useState(false);
   const [itemToRemove, setItemToRemove] = useState<string | null>(null);
-  const [itemToPay, setItemToPay] = useState<{productName: string, maxQuantity: number, price: number, productId: string} | null>(null);
-  const [payQuantity, setPayQuantity] = useState(1);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [paidReceiptData, setPaidReceiptData] = useState<any>(null);
   const [cashError, setCashError] = useState('');
 
@@ -94,19 +93,21 @@ export const OrderView = ({ tableId, onBack }: Props) => {
   const handleNotifyCashier = async () => {
       try {
           setIsNotifying(true);
+          
+          // Sincroniza via estado JSON (sem depender da tabela SQL estar criada)
+          requestCheckout(tableId);
+          
+          // Tenta salvar via Realtime (caso a tabela exista), mas sem bloquear o app com erro
           const { error } = await supabase.from('cashier_notifications').insert({
               table_id: tableId,
               table_number: table?.number,
               waiter_name: currentUser?.name || 'Garçom'
           });
-          
           if (error) {
-              console.error(error);
-              alert("Erro ao notificar o banco de dados. Tente novamente.");
-          } else {
-              // Try to fallback show toast
-              alert("Pedido enviado ao caixa!");
+              console.log('Ignorando erro de tabela SQL:', error);
           }
+          
+          alert("Pedido enviado ao caixa de forma garantida!");
       } catch (err) {
           console.error(err);
       } finally {
@@ -318,57 +319,6 @@ export const OrderView = ({ tableId, onBack }: Props) => {
         </div>
     )}
 
-    {/* Item Quantity to Pay Modal */}
-    {itemToPay && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in print:hidden">
-            <div className="bg-slate-900 border border-pier-neon/30 p-8 rounded-2xl w-full max-w-sm shadow-2xl">
-                <h3 className="text-xl font-bold text-white mb-2 text-center">Selecionar Quantidade</h3>
-                <p className="text-slate-400 mb-6 text-sm text-center">
-                    Quantos <span className="text-pier-neon font-bold">{itemToPay.productName}</span> deseja separar para pagamento? (Máximo: {itemToPay.maxQuantity})
-                </p>
-
-                <div className="flex items-center justify-center gap-6 mb-8">
-                    <button 
-                        onClick={() => setPayQuantity(Math.max(1, payQuantity - 1))}
-                        className="w-14 h-14 rounded-full bg-slate-800 border border-white/10 hover:border-pier-neon/50 text-white flex items-center justify-center active:scale-95 transition-all outline-none"
-                    >
-                        <Minus size={24} />
-                    </button>
-                    <div className="flex flex-col items-center">
-                        <span className="text-4xl font-mono font-bold text-white w-16 text-center">{payQuantity}</span>
-                        <span className="text-sm font-bold text-pier-neon mt-2">R$ {(payQuantity * itemToPay.price).toFixed(2)}</span>
-                    </div>
-                    <button 
-                        onClick={() => setPayQuantity(Math.min(itemToPay.maxQuantity, payQuantity + 1))}
-                        className="w-14 h-14 rounded-full bg-slate-800 border border-white/10 hover:border-pier-neon/50 text-white flex items-center justify-center active:scale-95 transition-all outline-none"
-                    >
-                        <Plus size={24} />
-                    </button>
-                </div>
-
-                <div className="flex gap-4">
-                    <button 
-                        onClick={() => setItemToPay(null)}
-                        className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all text-sm"
-                    >
-                        CANCELAR
-                    </button>
-                    <button 
-                        onClick={() => {
-                            setPartialItems([{productId: itemToPay.productId, quantity: payQuantity, price: itemToPay.price, productName: itemToPay.productName}]);
-                            setIsPartialPayment(true);
-                            setItemToPay(null);
-                            setPaymentModalOpen(true);
-                        }}
-                        className="flex-1 py-4 bg-gradient-to-r from-pier-neon to-pier-green text-black font-bold rounded-xl shadow-lg transition-all text-sm uppercase"
-                    >
-                        PAGAR
-                    </button>
-                </div>
-            </div>
-        </div>
-    )}
-
     {/* MAIN UI - HIDDEN WHEN PRINTING */}
     <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 animate-fade-in print:hidden relative">
       {/* Mobile Tab Toggle */}
@@ -515,50 +465,75 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                     <p className="text-sm font-light">Nenhum item lançado</p>
                 </div>
             ) : (
-                order.items.map((item, idx) => (
-                    <div key={`${item.productId}-${idx}`} className="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5 hover:border-pier-neon/30 transition-all group animate-fade-in-up">
-                        <div className="flex-1 min-w-0 pr-2">
-                            <p className="font-medium text-white text-sm truncate">{item.productName}</p>
-                            <p className="text-xs text-slate-400">R$ {item.price.toFixed(2)} un</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="flex flex-col items-end">
-                                <span className="font-bold text-white text-sm">R$ {item.total.toFixed(2)}</span>
-                                <span className="text-xs text-pier-neon font-mono">x{item.quantity}</span>
-                            </div>
-                            <div className="flex bg-white/5 rounded-lg border border-white/5 overflow-hidden">
-                                <button 
-                                    onClick={() => removeFromOrder(tableId, item.productId)}
-                                    className="w-10 h-10 flex items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white transition-colors border-r border-white/5"
-                                    title="Diminuir quantidade"
-                                >
-                                    <Minus size={16} />
-                                </button>
-                                <button 
-                                    onClick={() => setItemToRemove(item.productId)}
-                                    className="px-3 h-10 flex items-center justify-center gap-1 text-red-500 hover:bg-red-500/20 transition-colors bg-red-500/10 font-bold text-xs"
-                                >
-                                    <Trash2 size={14} /> EXCLUIR
-                                </button>
+                order.items.map((item, idx) => {
+                    const isSelected = selectedProductIds.includes(item.productId);
+                    return (
+                        <div key={`${item.productId}-${idx}`} className={`flex justify-between items-center p-3 rounded-xl border transition-all group animate-fade-in-up ${isSelected ? 'bg-pier-neon/10 border-pier-neon' : 'bg-white/5 border-white/5 hover:border-pier-neon/30'}`}>
+                            <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
                                 <button 
                                     onClick={() => {
-                                        if (item.quantity === 1) {
-                                            setPartialItems([{productId: item.productId, quantity: 1, price: item.price, productName: item.productName}]);
-                                            setIsPartialPayment(true);
-                                            setPaymentModalOpen(true);
+                                        if (isSelected) {
+                                            setSelectedProductIds(prev => prev.filter(id => id !== item.productId));
                                         } else {
-                                            setItemToPay({productName: item.productName, maxQuantity: item.quantity, price: item.price, productId: item.productId});
-                                            setPayQuantity(1);
+                                            setSelectedProductIds(prev => [...prev, item.productId]);
                                         }
                                     }}
-                                    className="px-3 h-10 flex items-center justify-center gap-1 text-pier-neon hover:bg-pier-neon/20 transition-colors bg-pier-neon/10 font-bold text-xs border-l border-white/5"
+                                    className={`w-6 h-6 rounded-md border flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-pier-neon border-pier-neon text-black' : 'border-slate-500 bg-black/50 text-transparent'}`}
                                 >
-                                    <Banknote size={14} /> PAGAR
+                                    ✓
                                 </button>
+                                
+                                <div className="flex-1 min-w-0">
+                                    <p className={`font-medium text-sm truncate ${isSelected ? 'text-pier-neon' : 'text-white'}`}>{item.productName}</p>
+                                    <p className="text-xs text-slate-400">R$ {item.price.toFixed(2)} un</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="flex flex-col items-end">
+                                    <span className={`font-bold text-sm ${isSelected ? 'text-pier-neon' : 'text-white'}`}>R$ {item.total.toFixed(2)}</span>
+                                    <span className="text-xs text-slate-400 font-mono">x{item.quantity}</span>
+                                </div>
+                                <div className="flex bg-white/5 rounded-lg border border-white/5 overflow-hidden">
+                                    <button 
+                                        onClick={() => removeFromOrder(tableId, item.productId)}
+                                        className="w-10 h-10 flex items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white transition-colors border-r border-white/5"
+                                        title="Diminuir quantidade"
+                                    >
+                                        <Minus size={16} />
+                                    </button>
+                                    <button 
+                                        onClick={() => setItemToRemove(item.productId)}
+                                        className="px-3 h-10 flex items-center justify-center gap-1 text-red-500 hover:bg-red-500/20 transition-colors bg-red-500/10 font-bold text-xs"
+                                    >
+                                        <Trash2 size={14} /> EXCLUIR
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))
+                    );
+                })
+            )}
+
+            {/* Floating Action Bar for Group Partial Payment */}
+            {selectedProductIds.length > 0 && (
+                <div className="fixed md:absolute bottom-32 md:bottom-36 left-4 right-4 md:left-2 md:right-2 z-[90] animate-fade-in-up">
+                    <button 
+                        onClick={() => {
+                            setPartialItems(
+                                order.items
+                                    .filter(i => selectedProductIds.includes(i.productId))
+                                    .map(i => ({productId: i.productId, quantity: i.quantity, price: i.price, productName: i.productName}))
+                            );
+                            setIsPartialPayment(true);
+                            setPartialPaymentModalOpen(true);
+                            setSelectedProductIds([]); // clear selection
+                        }}
+                        className="w-full bg-gradient-to-r from-pier-neon to-pier-cyan text-black font-black uppercase tracking-wide py-4 rounded-xl shadow-[0_10px_30px_rgba(34,211,238,0.5)] flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                    >
+                        <Banknote size={20} />
+                        PAGAR {selectedProductIds.length} ITEN{selectedProductIds.length > 1 ? 'S' : ''} MENU{selectedProductIds.length > 1 ? 'S' : ''}
+                    </button>
+                </div>
             )}
 
             {order.deletedItems && order.deletedItems.length > 0 && (
@@ -1049,7 +1024,8 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                                                 newItems[idx].quantity = Math.min(originalItem.quantity, newItems[idx].quantity + 1);
                                                 setPartialItems(newItems);
                                             }}
-                                            className="w-8 h-8 rounded-lg bg-black border border-white/10 flex items-center justify-center text-white"
+                                            disabled={pItem.quantity >= originalItem.quantity}
+                                            className="w-8 h-8 rounded-lg bg-black border border-white/10 flex items-center justify-center text-white disabled:opacity-30 disabled:cursor-not-allowed"
                                           >
                                               <Plus size={14} />
                                           </button>
@@ -1058,6 +1034,32 @@ export const OrderView = ({ tableId, onBack }: Props) => {
                               </div>
                           );
                       })}
+                  </div>
+
+                  <div className="shrink-0 pt-4 border-t border-white/10 mt-auto mb-4">
+                      <div className="flex justify-between text-slate-400 text-xs mb-2">
+                          <span className="text-sm">Subtotal dos Selecionados</span>
+                          <span className="font-mono text-sm">R$ {partialSubtotal.toFixed(2)}</span>
+                      </div>
+                      
+                      <div className={`w-full flex justify-between items-center p-3 mt-2 rounded-xl border transition-all ${includeService ? 'bg-pier-neon/10 border-pier-neon text-pier-neon' : 'bg-slate-800/50 border-white/10 text-slate-400 hover:bg-slate-700/50'}`}>
+                          <div 
+                              className="flex items-center gap-2 cursor-pointer flex-1"
+                              onClick={() => setIncludeService(!includeService)}
+                          >
+                              <div className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-colors ${includeService ? 'bg-pier-neon border-pier-neon' : 'border-slate-500'}`}>
+                                  {includeService && <div className="w-2 h-2 bg-slate-900 rounded-[2px]" />}
+                              </div>
+                              <span className="font-bold text-sm">Serviço {customServiceFee === null ? '(10%)' : '(Customizado)'}</span>
+                          </div>
+                      </div>
+
+                      <div className="flex justify-between items-end mt-4">
+                          <span className="text-slate-400 text-sm">Total a Pagar</span>
+                          <span className="text-2xl font-bold text-pier-neon font-mono">
+                              R$ {(partialSubtotal + (includeService ? (customServiceFee !== null ? customServiceFee : partialSubtotal * 0.1) : 0)).toFixed(2)}
+                          </span>
+                      </div>
                   </div>
 
                   <div className="shrink-0 flex gap-3">
