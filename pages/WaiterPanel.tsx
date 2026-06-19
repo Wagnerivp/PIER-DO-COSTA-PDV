@@ -34,6 +34,8 @@ const WaiterCard: React.FC<{
 }) => {
     const [activeTab, setActiveTab] = useState<'RESUMO' | 'CONSUMO'>('RESUMO');
     const [consumptionProductId, setConsumptionProductId] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [showSuggestions, setShowSuggestions] = useState(false);
 
     const handleAddConsumption = () => {
         const prod = products.find(p => p.id === consumptionProductId);
@@ -49,10 +51,15 @@ const WaiterCard: React.FC<{
         });
 
         setConsumptionProductId('');
+        setSearchTerm('');
+        setShowSuggestions(false);
         showToast('Consumo lançado com sucesso!');
     };
 
     const consumptionsAndAdvances = commissionLogs.filter(l => l.waiterId === waiter.id && (l.type === 'ADVANCE' || l.type === 'CONSUMPTION'));
+
+    const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
 
     return (
         <div className="glass-panel p-5 rounded-2xl border border-white/10 hover:border-pier-neon/30 transition-colors">
@@ -146,26 +153,49 @@ const WaiterCard: React.FC<{
                 </>
             ) : (
                 <div className="space-y-4">
-                    <div className="flex flex-col gap-2 bg-slate-900/50 p-3 rounded-lg border border-white/5">
-                        <select 
-                            value={consumptionProductId}
-                            onChange={(e) => setConsumptionProductId(e.target.value)}
-                            className="bg-black/50 text-white text-xs p-2 rounded border border-white/10 outline-none focus:border-pier-neon w-full"
-                        >
-                            <option value="">Selecione um Produto...</option>
-                            {products.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
-                                <option key={p.id} value={p.id}>
-                                    {p.name} - R$ {p.price.toFixed(2)} (Estoque: {p.stock})
-                                </option>
-                            ))}
-                        </select>
-                        <button 
-                            onClick={handleAddConsumption}
-                            disabled={!consumptionProductId}
-                            className="bg-pier-neon text-pier-900 px-3 py-2 rounded text-xs font-bold w-full disabled:opacity-50 transition-opacity"
-                        >
-                            Lançar Consumo (-1 Estoque)
-                        </button>
+                    <div className="bg-slate-900/50 p-3 rounded-lg border border-white/5">
+                        <div className="relative flex flex-col gap-2">
+                            <input
+                                type="text"
+                                placeholder="Buscar produto para consumo..."
+                                value={searchTerm}
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    setShowSuggestions(true);
+                                    setConsumptionProductId('');
+                                }}
+                                onFocus={() => setShowSuggestions(true)}
+                                className="bg-black/50 text-white text-xs p-2 rounded border border-white/10 outline-none focus:border-pier-neon w-full"
+                            />
+                            {showSuggestions && searchTerm && (
+                                <div className="absolute top-full left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-slate-800 border border-white/10 rounded-lg shadow-xl z-10 flex flex-col scrollbar-thin">
+                                    {filteredProducts.map(p => (
+                                        <button
+                                            key={p.id}
+                                            onClick={() => {
+                                                setConsumptionProductId(p.id);
+                                                setSearchTerm(p.name);
+                                                setShowSuggestions(false);
+                                            }}
+                                            className="text-left px-3 py-2 text-xs text-white hover:bg-pier-neon hover:text-black transition-colors flex justify-between"
+                                        >
+                                            <span>{p.name}</span>
+                                            <span className="opacity-70 font-mono">R$ {p.price.toFixed(2)} | Qtd: {p.stock}</span>
+                                        </button>
+                                    ))}
+                                    {filteredProducts.length === 0 && (
+                                        <div className="px-3 py-2 text-xs text-slate-400">Nenhum produto encontrado.</div>
+                                    )}
+                                </div>
+                            )}
+                            <button 
+                                onClick={handleAddConsumption}
+                                disabled={!consumptionProductId}
+                                className="bg-pier-neon text-pier-900 px-3 py-2 rounded text-xs font-bold w-full disabled:opacity-50 transition-opacity"
+                            >
+                                Lançar Consumo (-1 Estoque)
+                            </button>
+                        </div>
                     </div>
                     
                     <div className="max-h-32 overflow-y-auto scrollbar-thin pr-1 space-y-2">
