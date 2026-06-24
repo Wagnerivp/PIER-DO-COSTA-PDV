@@ -162,6 +162,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
 
         payPartialAccount(tableId, partialItems, method, activeServiceFee);
         setPaidReceiptData(receiptData);
+        setTimeout(() => window.print(), 300);
         setPaymentModalOpen(false);
         setIsPartialPayment(false);
         setShowCashInput(false);
@@ -171,6 +172,7 @@ export const OrderView = ({ tableId, onBack }: Props) => {
     } else {
         closeAccount(tableId, method, activeServiceFee);
         setPaidReceiptData(receiptData);
+        setTimeout(() => window.print(), 300);
         setPaymentModalOpen(false);
     }
   };
