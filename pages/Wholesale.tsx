@@ -312,7 +312,7 @@ export const Wholesale = () => {
         }
     };
 
-    const [mainTab, setMainTab] = useState<'CATALOG' | 'FINANCE'>('CATALOG');
+    const [mainTab, setMainTab] = useState<'CATALOG' | 'FINANCE' | 'CUSTOMERS'>('CATALOG');
 
     return (
         <div className="flex flex-col h-full animate-fade-in p-4 max-w-7xl mx-auto w-full">
@@ -329,6 +329,12 @@ export const Wholesale = () => {
                     className={`px-6 py-2 rounded-lg font-bold transition-colors ${mainTab === 'FINANCE' ? 'bg-pier-neon text-black' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
                 >
                     Financeiro Atacado
+                </button>
+                <button
+                    onClick={() => setMainTab('CUSTOMERS')}
+                    className={`px-6 py-2 rounded-lg font-bold transition-colors ${mainTab === 'CUSTOMERS' ? 'bg-pier-neon text-black' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+                >
+                    Clientes Atacado
                 </button>
             </div>
 
@@ -713,7 +719,7 @@ export const Wholesale = () => {
                 </div>
             </div>
             </div>
-            ) : (
+            ) : mainTab === 'FINANCE' ? (
                 <div className="flex flex-col h-full gap-4 min-h-0 flex-1">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
                         <div className="bg-slate-900 border border-white/10 p-6 rounded-2xl flex flex-col items-center justify-center">
@@ -821,7 +827,46 @@ export const Wholesale = () => {
                         </table>
                     </div>
                 </div>
-            )}
+            ) : mainTab === 'CUSTOMERS' ? (
+                <div className="flex flex-col h-full gap-4 min-h-0 flex-1">
+                    <div className="flex-1 bg-slate-900 rounded-2xl border border-white/10 overflow-hidden flex flex-col p-4">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                <Users className="text-pier-neon" /> Clientes Atacado
+                            </h3>
+                        </div>
+                        <div className="flex-1 overflow-y-auto scrollbar-thin space-y-2">
+                            {customers.map(c => (
+                                <div key={c.id} className="bg-slate-800/50 border border-white/5 p-4 rounded-xl flex items-center justify-between hover:bg-slate-800 transition-colors">
+                                    <div>
+                                        <div className="text-white font-bold text-lg">{c.name}</div>
+                                        <div className="text-slate-400 text-sm mt-1">{c.phone}</div>
+                                        {(c.street || c.neighborhood) && (
+                                            <div className="text-slate-500 text-xs mt-1">
+                                                {c.street}{c.neighborhood ? `, ${c.neighborhood}` : ''} {c.reference ? `(${c.reference})` : ''}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            handleSelectCustomer(c);
+                                            setMainTab('CATALOG');
+                                        }}
+                                        className="bg-pier-neon/20 hover:bg-pier-neon text-pier-neon hover:text-black px-4 py-2 rounded-lg font-bold transition-colors border border-pier-neon/30 hover:border-pier-neon flex items-center gap-2"
+                                    >
+                                        <ShoppingCart size={16} /> Fazer Orçamento
+                                    </button>
+                                </div>
+                            ))}
+                            {customers.length === 0 && (
+                                <div className="text-center text-slate-500 p-8">
+                                    Nenhum cliente cadastrado.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            ) : null}
 
             {/* Product Modal */}
             {isProductModalOpen && (
