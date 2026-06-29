@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../services/AppContext';
 import { CATEGORIES } from '../constants';
-import { ShoppingCart, Plus, Minus, Trash2, Send, Percent, DollarSign, Package, Users, PlusCircle, X, Box } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, Send, Percent, DollarSign, Package, Users, PlusCircle, X, Box, Search } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { EditableNumber } from '../components/EditableNumber';
 
@@ -19,6 +19,9 @@ export const Wholesale = () => {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
     const [customerPhone, setCustomerPhone] = useState(''); // Used for new or editing
+    const [customerStreet, setCustomerStreet] = useState('');
+    const [customerNeighborhood, setCustomerNeighborhood] = useState('');
+    const [customerReference, setCustomerReference] = useState('');
 
     // Product Creation Modal
     const { addProduct } = useApp();
@@ -66,9 +69,32 @@ export const Wholesale = () => {
         setNewProductBoxSize('1');
     };
 
+    const [catalogSearchTerm, setCatalogSearchTerm] = useState('');
     const currentCategoryProducts = products.filter(p => p.categoryId === activeTab);
+    const displayedProducts = catalogSearchTerm.trim() !== '' 
+        ? products.filter(p => p.name.toLowerCase().includes(catalogSearchTerm.toLowerCase()))
+        : currentCategoryProducts;
 
     const filteredCustomers = customers.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const handleSelectCustomer = (c: any) => {
+        setSelectedCustomer(c);
+        setSearchTerm(c.name);
+        setCustomerPhone(c.phone || '');
+        setCustomerStreet(c.street || '');
+        setCustomerNeighborhood(c.neighborhood || '');
+        setCustomerReference(c.reference || '');
+        setShowSuggestions(false);
+    };
+
+    const handleClearCustomerSelection = () => {
+        setSelectedCustomer(null);
+        setSearchTerm('');
+        setCustomerPhone('');
+        setCustomerStreet('');
+        setCustomerNeighborhood('');
+        setCustomerReference('');
+    };
 
     const handleUpdateMargin = (product: any, marginText: string) => {
         const margin = parseFloat(marginText);
@@ -136,7 +162,10 @@ export const Wholesale = () => {
         const newCustomer = {
             id: `cust-${Date.now()}`,
             name: searchTerm,
-            phone: customerPhone
+            phone: customerPhone,
+            street: customerStreet,
+            neighborhood: customerNeighborhood,
+            reference: customerReference
         };
         addCustomer(newCustomer);
         setSelectedCustomer(newCustomer);
@@ -147,6 +176,9 @@ export const Wholesale = () => {
     const handleSendQuote = () => {
         const phoneToSend = selectedCustomer?.phone || customerPhone;
         const nameToSend = selectedCustomer?.name || searchTerm;
+        const streetToSend = selectedCustomer?.street || customerStreet;
+        const neighborhoodToSend = selectedCustomer?.neighborhood || customerNeighborhood;
+        const referenceToSend = selectedCustomer?.reference || customerReference;
 
         if (!phoneToSend) {
             alert('Por favor, selecione ou informe o telefone do cliente.');
@@ -155,6 +187,8 @@ export const Wholesale = () => {
 
         let msg = `*Orçamento - Pier do Costa*\n`;
         if (nameToSend) msg += `Cliente: ${nameToSend}\n`;
+        if (streetToSend) msg += `Endereço: ${streetToSend}, ${neighborhoodToSend || ''}\n`;
+        if (referenceToSend) msg += `Ref: ${referenceToSend}\n`;
         msg += `------------------------\n`;
         quoteItems.forEach(item => {
             const product = products.find(p => p.id === item.productId);
@@ -165,10 +199,14 @@ export const Wholesale = () => {
         });
         msg += `------------------------\n`;
         msg += `*Total: R$ ${quoteTotal.toFixed(2)}*\n\n`;
+        
+        const cleanPhone = phoneToSend.replace(/\D/g, '');
+        if (cleanPhone) {
+            msg += `Link WhatsApp do Cliente: https://wa.me/55${cleanPhone}\n\n`;
+        }
         msg += `Válido por 7 dias.`;
 
         const encodedMsg = encodeURIComponent(msg);
-        const cleanPhone = phoneToSend.replace(/\D/g, '');
         window.open(`https://wa.me/55${cleanPhone}?text=${encodedMsg}`, '_blank');
     };
 
@@ -195,17 +233,33 @@ export const Wholesale = () => {
                     {CATEGORIES.map(cat => (
                         <button
                             key={cat.id}
-                            onClick={() => setActiveTab(cat.id)}
-                            className={`px-6 py-4 flex items-center gap-2 font-bold whitespace-nowrap transition-all border-b-2 ${activeTab === cat.id ? 'border-pier-neon text-pier-neon bg-pier-neon/5' : 'border-transparent text-slate-400 hover:text-white hover:bg-white/5'}`}
+                            onClick={() => {
+                                setActiveTab(cat.id);
+                                setCatalogSearchTerm('');
+                            }}
+                            className={`px-6 py-4 flex items-center gap-2 font-bold whitespace-nowrap transition-all border-b-2 ${activeTab === cat.id && catalogSearchTerm.trim() === '' ? 'border-pier-neon text-pier-neon bg-pier-neon/5' : 'border-transparent text-slate-400 hover:text-white hover:bg-white/5'}`}
                         >
                             <span>{cat.icon}</span> {cat.name}
                         </button>
                     ))}
                 </div>
 
+                <div className="p-4 border-b border-white/10 shrink-0 bg-black/10">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Buscar produtos em todo o catálogo..."
+                            value={catalogSearchTerm}
+                            onChange={(e) => setCatalogSearchTerm(e.target.value)}
+                            className="w-full bg-slate-800 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white focus:border-pier-neon outline-none font-medium"
+                        />
+                    </div>
+                </div>
+
                 {/* Product List */}
                 <div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-3">
-                    {currentCategoryProducts.map(product => {
+                    {displayedProducts.map(product => {
                         const boxSize = product.wholesaleBoxSize || 1;
                         const margin = product.wholesaleMargin !== undefined ? product.wholesaleMargin.toFixed(1) : (product.cost > 0 ? ((product.price - product.cost) / product.cost * 100).toFixed(1) : '0.0');
                         const priceUn = product.wholesalePrice !== undefined ? product.wholesalePrice.toFixed(2) : product.price.toFixed(2);
@@ -438,12 +492,7 @@ export const Wholesale = () => {
                                     {filteredCustomers.map(c => (
                                         <button
                                             key={c.id}
-                                            onClick={() => {
-                                                setSelectedCustomer(c);
-                                                setSearchTerm(c.name);
-                                                setCustomerPhone(c.phone);
-                                                setShowSuggestions(false);
-                                            }}
+                                            onClick={() => handleSelectCustomer(c)}
                                             className="text-left px-3 py-2 text-sm text-white hover:bg-pier-neon hover:text-black transition-colors flex justify-between"
                                         >
                                             <span>{c.name}</span>
@@ -458,33 +507,62 @@ export const Wholesale = () => {
                         </div>
 
                         {!selectedCustomer && (
-                            <div className="flex gap-2">
+                            <div className="space-y-2">
                                 <input 
                                     type="tel" 
                                     placeholder="WhatsApp (ex: 21999999999)"
                                     value={customerPhone}
                                     onChange={(e) => setCustomerPhone(e.target.value)}
-                                    className="flex-1 bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-pier-neon outline-none"
+                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-pier-neon outline-none"
                                 />
-                                <button 
-                                    onClick={handleCreateCustomer}
-                                    className="bg-pier-neon/20 hover:bg-pier-neon text-pier-neon hover:text-black px-3 rounded-lg border border-pier-neon/30 hover:border-pier-neon transition-colors flex items-center justify-center"
-                                    title="Cadastrar Novo Cliente"
-                                >
-                                    <PlusCircle size={20} />
-                                </button>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Rua/Av"
+                                        value={customerStreet}
+                                        onChange={(e) => setCustomerStreet(e.target.value)}
+                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-pier-neon outline-none"
+                                    />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Bairro"
+                                        value={customerNeighborhood}
+                                        onChange={(e) => setCustomerNeighborhood(e.target.value)}
+                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-pier-neon outline-none"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Ponto de Referência"
+                                        value={customerReference}
+                                        onChange={(e) => setCustomerReference(e.target.value)}
+                                        className="flex-1 bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-pier-neon outline-none"
+                                    />
+                                    <button 
+                                        onClick={handleCreateCustomer}
+                                        className="bg-pier-neon/20 hover:bg-pier-neon text-pier-neon hover:text-black px-3 rounded-lg border border-pier-neon/30 hover:border-pier-neon transition-colors flex items-center justify-center"
+                                        title="Cadastrar Novo Cliente"
+                                    >
+                                        <PlusCircle size={20} />
+                                    </button>
+                                </div>
                             </div>
                         )}
                         {selectedCustomer && (
-                             <div className="flex justify-between items-center bg-slate-800/50 p-2 rounded-lg border border-white/5">
-                                <span className="text-xs text-slate-400">WhatsApp: {selectedCustomer.phone}</span>
+                             <div className="flex flex-col gap-1 bg-slate-800/50 p-3 rounded-lg border border-white/5 relative">
+                                <span className="text-xs text-slate-400"><strong>WhatsApp:</strong> {selectedCustomer.phone}</span>
+                                {(selectedCustomer.street || selectedCustomer.neighborhood) && (
+                                    <span className="text-xs text-slate-400">
+                                        <strong>Endereço:</strong> {selectedCustomer.street}{selectedCustomer.neighborhood ? `, ${selectedCustomer.neighborhood}` : ''}
+                                    </span>
+                                )}
+                                {selectedCustomer.reference && (
+                                    <span className="text-xs text-slate-400"><strong>Ref:</strong> {selectedCustomer.reference}</span>
+                                )}
                                 <button 
-                                    onClick={() => {
-                                        setSelectedCustomer(null);
-                                        setSearchTerm('');
-                                        setCustomerPhone('');
-                                    }}
-                                    className="text-xs text-red-400 hover:text-red-300 underline"
+                                    onClick={handleClearCustomerSelection}
+                                    className="absolute top-2 right-2 text-xs text-red-400 hover:text-red-300 underline"
                                 >
                                     Limpar
                                 </button>

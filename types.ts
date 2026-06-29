@@ -34,6 +34,9 @@ export interface Customer {
   id: string;
   name: string;
   phone: string;
+  street?: string;
+  neighborhood?: string;
+  reference?: string;
 }
 
 export type TableStatus = 'AVAILABLE' | 'OCCUPIED' | 'PAYMENT_PENDING';
