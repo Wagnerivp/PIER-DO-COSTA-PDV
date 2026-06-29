@@ -487,7 +487,7 @@ export const Wholesale = () => {
                                 onFocus={() => setShowSuggestions(true)}
                                 className="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-pier-neon outline-none"
                             />
-                            {showSuggestions && searchTerm && !selectedCustomer && (
+                            {showSuggestions && searchTerm && !selectedCustomer && filteredCustomers.length > 0 && (
                                 <div className="absolute top-full left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-slate-800 border border-white/10 rounded-lg shadow-xl z-20 flex flex-col scrollbar-thin">
                                     {filteredCustomers.map(c => (
                                         <button
@@ -499,9 +499,6 @@ export const Wholesale = () => {
                                             <span className="opacity-70 text-xs">{c.phone}</span>
                                         </button>
                                     ))}
-                                    {filteredCustomers.length === 0 && (
-                                        <div className="px-3 py-2 text-xs text-slate-400 bg-slate-900/50">Nenhum cliente encontrado.</div>
-                                    )}
                                 </div>
                             )}
                         </div>
