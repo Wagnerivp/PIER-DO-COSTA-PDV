@@ -10,6 +10,10 @@ export const Wholesale = () => {
     const [activeTab, setActiveTab] = useState(CATEGORIES[0]?.id);
     const [quoteItems, setQuoteItems] = useState<{ id: string; productId: string; type: 'UNIT' | 'BOX'; quantity: number; price: number; boxSize: number }[]>([]);
     
+    // Product Search in Quote
+    const [productSearchTerm, setProductSearchTerm] = useState('');
+    const [showProductSuggestions, setShowProductSuggestions] = useState(false);
+
     // Customer Selection
     const [searchTerm, setSearchTerm] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -219,61 +223,61 @@ export const Wholesale = () => {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                <div className="flex flex-col gap-3">
                                     {/* Unidade configs */}
-                                    <div className="bg-black/30 p-3 rounded-lg border border-white/5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
-                                        <div className="flex gap-3">
-                                            <div className="flex flex-col gap-1 w-20">
-                                                <label className="text-[10px] text-slate-400 uppercase font-bold text-center">Margem(%)</label>
+                                    <div className="bg-black/20 p-3 rounded-lg border border-white/5 flex flex-wrap items-end justify-between gap-4">
+                                        <div className="flex flex-wrap items-end gap-3">
+                                            <div className="flex flex-col gap-1 w-24">
+                                                <label className="text-[10px] text-slate-400 uppercase font-bold">Margem Un (%)</label>
                                                 <EditableNumber 
                                                     value={margin}
                                                     onChange={(val) => handleUpdateMargin(product, val)}
-                                                    className="bg-slate-800 border border-white/10 rounded-lg px-2 py-2 text-white font-mono text-sm focus:border-pier-neon outline-none text-center"
+                                                    className="bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-sm focus:border-pier-neon outline-none"
                                                     step="0.1"
                                                 />
                                             </div>
                                             <div className="flex flex-col gap-1 w-28">
-                                                <label className="text-[10px] text-slate-400 uppercase font-bold text-center">Preço Un(R$)</label>
+                                                <label className="text-[10px] text-slate-400 uppercase font-bold">Preço Un (R$)</label>
                                                 <EditableNumber 
                                                     value={priceUn}
                                                     onChange={(val) => handleUpdatePrice(product, val)}
-                                                    className="bg-slate-800 border border-white/10 rounded-lg px-2 py-2 text-pier-neon font-mono text-sm font-bold focus:border-pier-neon outline-none text-center"
+                                                    className="bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-pier-neon font-mono text-sm font-bold focus:border-pier-neon outline-none"
                                                     step="0.1"
                                                 />
                                             </div>
                                         </div>
                                         <button 
                                             onClick={() => handleAddToQuote(product, 'UNIT')}
-                                            className="w-full sm:w-auto hover:bg-pier-neon bg-pier-neon/10 text-pier-neon hover:text-black px-4 py-2 rounded-lg transition-colors text-sm font-bold border border-pier-neon/30 whitespace-nowrap h-[38px] flex items-center justify-center mt-4 sm:mt-0"
+                                            className="w-full sm:w-auto hover:bg-pier-neon bg-pier-neon/10 text-pier-neon hover:text-black px-6 py-2 rounded-lg transition-colors text-sm font-bold border border-pier-neon/30 whitespace-nowrap h-[42px] flex items-center justify-center"
                                         >
                                             +1 Unidade
                                         </button>
                                     </div>
 
                                     {/* Caixa configs */}
-                                    <div className="bg-black/30 p-3 rounded-lg border border-white/5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
-                                        <div className="flex gap-3">
-                                            <div className="flex flex-col gap-1 w-20">
-                                                <label className="text-[10px] text-slate-400 uppercase font-bold text-center">Un/Caixa</label>
+                                    <div className="bg-black/20 p-3 rounded-lg border border-white/5 flex flex-wrap items-end justify-between gap-4">
+                                        <div className="flex flex-wrap items-end gap-3">
+                                            <div className="flex flex-col gap-1 w-24">
+                                                <label className="text-[10px] text-slate-400 uppercase font-bold">Un por Caixa</label>
                                                 <EditableNumber 
                                                     value={boxSize}
                                                     onChange={(val) => handleUpdateBoxSize(product, val)}
-                                                    className="bg-slate-800 border border-white/10 rounded-lg px-2 py-2 text-white font-mono text-sm focus:border-green-400 outline-none text-center"
+                                                    className="bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-sm focus:border-green-400 outline-none"
                                                 />
                                             </div>
                                             <div className="flex flex-col gap-1 w-28">
-                                                <label className="text-[10px] text-slate-400 uppercase font-bold text-center">Preço Cx(R$)</label>
+                                                <label className="text-[10px] text-slate-400 uppercase font-bold">Preço Cx (R$)</label>
                                                 <EditableNumber 
                                                     value={priceCx}
                                                     onChange={(val) => handleUpdateBoxPrice(product, val)}
-                                                    className="bg-slate-800 border border-white/10 rounded-lg px-2 py-2 text-green-400 font-mono text-sm font-bold focus:border-green-400 outline-none text-center"
+                                                    className="bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-green-400 font-mono text-sm font-bold focus:border-green-400 outline-none"
                                                     step="0.1"
                                                 />
                                             </div>
                                         </div>
                                         <button 
                                             onClick={() => handleAddToQuote(product, 'BOX')}
-                                            className="w-full sm:w-auto hover:bg-green-400 bg-green-400/10 text-green-400 hover:text-black px-4 py-2 rounded-lg transition-colors text-sm font-bold border border-green-400/30 whitespace-nowrap h-[38px] flex items-center justify-center mt-4 sm:mt-0"
+                                            className="w-full sm:w-auto hover:bg-green-400 bg-green-400/10 text-green-400 hover:text-black px-6 py-2 rounded-lg transition-colors text-sm font-bold border border-green-400/30 whitespace-nowrap h-[42px] flex items-center justify-center"
                                         >
                                             +1 Caixa
                                         </button>
@@ -292,12 +296,70 @@ export const Wholesale = () => {
 
             {/* Quote Sidebar */}
             <div className="w-full md:w-96 flex flex-col bg-slate-900 rounded-2xl border border-white/10 overflow-hidden shrink-0">
-                <div className="p-4 border-b border-white/10 bg-black/20 flex items-center gap-2 shrink-0">
-                    <ShoppingCart className="text-white" />
-                    <h2 className="text-xl font-bold text-white">Orçamento</h2>
+                <div className="p-4 border-b border-white/10 bg-black/20 flex flex-col gap-4 shrink-0">
+                    <div className="flex items-center gap-2">
+                        <ShoppingCart className="text-white" />
+                        <h2 className="text-xl font-bold text-white">Orçamento</h2>
+                    </div>
+                    
+                    {/* Product Search */}
+                    <div className="relative z-10">
+                        <input 
+                            type="text" 
+                            placeholder="Buscar produto para adicionar..."
+                            value={productSearchTerm}
+                            onChange={(e) => {
+                                setProductSearchTerm(e.target.value);
+                                setShowProductSuggestions(true);
+                            }}
+                            onFocus={() => setShowProductSuggestions(true)}
+                            className="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-pier-neon outline-none"
+                        />
+                        {showProductSuggestions && productSearchTerm.trim() !== '' && (
+                            <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/10 rounded-lg shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                                {products.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase())).length > 0 ? (
+                                    products.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase())).map(product => {
+                                        const priceUn = product.wholesalePrice !== undefined ? product.wholesalePrice : product.price;
+                                        const boxSize = product.wholesaleBoxSize || 1;
+                                        const priceCx = priceUn * boxSize;
+
+                                        return (
+                                            <div key={product.id} className="p-2 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                <div className="text-white font-bold text-sm mb-1">{product.name}</div>
+                                                <div className="flex items-center gap-2">
+                                                    <button 
+                                                        onClick={() => {
+                                                            handleAddToQuote(product, 'UNIT');
+                                                            setProductSearchTerm('');
+                                                            setShowProductSuggestions(false);
+                                                        }}
+                                                        className="flex-1 text-xs bg-pier-neon/10 text-pier-neon hover:bg-pier-neon hover:text-black py-1 rounded transition-colors border border-pier-neon/30"
+                                                    >
+                                                        +1 Un (R$ {priceUn.toFixed(2)})
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => {
+                                                            handleAddToQuote(product, 'BOX');
+                                                            setProductSearchTerm('');
+                                                            setShowProductSuggestions(false);
+                                                        }}
+                                                        className="flex-1 text-xs bg-green-400/10 text-green-400 hover:bg-green-400 hover:text-black py-1 rounded transition-colors border border-green-400/30"
+                                                    >
+                                                        +1 Cx (R$ {priceCx.toFixed(2)})
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <div className="p-3 text-sm text-slate-400 text-center">Nenhum produto encontrado.</div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
+                <div className="flex-1 overflow-y-auto p-4 scrollbar-thin" onClick={() => setShowProductSuggestions(false)}>
                     {quoteItems.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-3">
                             <ShoppingCart size={48} className="opacity-20" />
