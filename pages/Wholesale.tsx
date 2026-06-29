@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { EditableNumber } from '../components/EditableNumber';
 
 export const Wholesale = () => {
-    const { products, updateProduct, customers, addCustomer } = useApp();
+    const { products, updateProduct, customers, addCustomer, wholesaleSales, updateWholesaleSale } = useApp();
     const [activeTab, setActiveTab] = useState(CATEGORIES[0]?.id);
     const [quoteItems, setQuoteItems] = useState<{ id: string; productId: string; type: 'UNIT' | 'BOX'; quantity: number; price: number; boxSize: number }[]>([]);
     
@@ -170,18 +170,34 @@ export const Wholesale = () => {
             alert('Por favor, preencha o nome e o WhatsApp para cadastrar o cliente.');
             return;
         }
-        const newCustomer = {
-            id: `cust-${Date.now()}`,
-            name: searchTerm,
-            phone: customerPhone,
-            street: customerStreet,
-            neighborhood: customerNeighborhood,
-            reference: customerReference
-        };
-        addCustomer(newCustomer);
-        setSelectedCustomer(newCustomer);
+
+        const existingCustomer = customers.find(c => c.phone === customerPhone);
+
+        if (existingCustomer) {
+            const updatedCustomer = {
+                ...existingCustomer,
+                name: searchTerm,
+                street: customerStreet,
+                neighborhood: customerNeighborhood,
+                reference: customerReference
+            };
+            updateCustomer(updatedCustomer);
+            setSelectedCustomer(updatedCustomer);
+            alert('Cadastro do cliente atualizado com sucesso!');
+        } else {
+            const newCustomer = {
+                id: `cust-${Date.now()}`,
+                name: searchTerm,
+                phone: customerPhone,
+                street: customerStreet,
+                neighborhood: customerNeighborhood,
+                reference: customerReference
+            };
+            addCustomer(newCustomer);
+            setSelectedCustomer(newCustomer);
+            alert('Cliente cadastrado com sucesso!');
+        }
         setShowSuggestions(false);
-        alert('Cliente cadastrado com sucesso!');
     };
 
     const handleSendQuote = () => {
@@ -221,17 +237,112 @@ export const Wholesale = () => {
         window.open(`https://wa.me/55${cleanPhone}?text=${encodedMsg}`, '_blank');
     };
 
+    const handleRegisterSale = () => {
+        const phoneToSend = selectedCustomer?.phone || customerPhone;
+        const nameToSend = selectedCustomer?.name || searchTerm;
+
+        if (!selectedCustomer) {
+            alert('Por favor, salve ou selecione o cliente antes de registrar a venda.');
+            return;
+        }
+
+        if (quoteItems.length === 0) {
+            alert('Adicione produtos ao orçamento primeiro.');
+            return;
+        }
+
+        const items = quoteItems.map(item => {
+            const product = products.find(p => p.id === item.productId);
+            return {
+                productId: item.productId,
+                productName: product ? product.name : 'Desconhecido',
+                quantity: item.type === 'BOX' ? item.quantity * item.boxSize : item.quantity,
+                price: item.type === 'BOX' ? item.price / item.boxSize : item.price,
+                total: item.price * item.quantity
+            };
+        });
+
+        const newSale = {
+            id: `ws-${Date.now()}`,
+            customerId: selectedCustomer.id,
+            customerName: nameToSend,
+            customerPhone: phoneToSend,
+            items: items,
+            total: quoteTotal,
+            date: new Date(),
+            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // + 7 days
+            status: 'PENDING' as const
+        };
+
+        useApp().addWholesaleSale?.(newSale); // Use optional chaining to avoid type errors if not fully updated
+        setQuoteItems([]);
+        alert('Venda registrada com sucesso! Prazo de 7 dias adicionado.');
+        setMainTab('FINANCE');
+    };
+
+    const handleSendCharge = (sale: any) => {
+        const cleanPhone = sale.customerPhone.replace(/\D/g, '');
+        if (!cleanPhone) {
+            alert('Cliente não possui telefone cadastrado.');
+            return;
+        }
+
+        const dateStr = sale.date.toLocaleDateString('pt-BR');
+        const dueDateStr = sale.dueDate.toLocaleDateString('pt-BR');
+
+        const msg = `*Aviso de Pagamento em Aberto - Pier do Costa*\n\n` +
+            `Olá ${sale.customerName}, você possui um pagamento em aberto referente ao pedido realizado em *${dateStr}*.\n\n` +
+            `*Valor Total:* R$ ${sale.total.toFixed(2)}\n` +
+            `*Data de Vencimento:* ${dueDateStr}\n\n` +
+            `Por favor, realize o pagamento via PIX para a chave abaixo:\n` +
+            `*PIX (Celular):* 2299204-0941\n\n` +
+            `Qualquer dúvida, estamos à disposição.`;
+
+        const encodedMsg = encodeURIComponent(msg);
+        window.open(`https://wa.me/55${cleanPhone}?text=${encodedMsg}`, '_blank');
+    };
+
+    const handleMarkAsPaid = (sale: any) => {
+        if(window.confirm('Confirmar o recebimento desta venda?')) {
+            updateWholesaleSale({
+                ...sale,
+                status: 'PAID',
+                paymentDate: new Date()
+            });
+        }
+    };
+
+    const [mainTab, setMainTab] = useState<'CATALOG' | 'FINANCE'>('CATALOG');
+
     return (
-        <div className="flex flex-col md:flex-row h-full gap-4 animate-fade-in p-4 max-w-7xl mx-auto w-full">
-            <div className="flex-1 flex flex-col min-h-0 bg-slate-900 rounded-2xl border border-white/10 overflow-hidden">
-                <div className="p-4 border-b border-white/10 shrink-0 flex justify-between items-start">
-                    <div>
-                        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                            <Package className="text-pier-neon" /> Catálogo Atacado
-                        </h2>
-                        <p className="text-sm text-slate-400 mt-1">Defina margens e preços de atacado para seus produtos de forma independente do PDV</p>
-                    </div>
-                    <button 
+        <div className="flex flex-col h-full animate-fade-in p-4 max-w-7xl mx-auto w-full">
+            {/* Header Tabs */}
+            <div className="flex items-center gap-4 mb-4 pb-4 border-b border-white/10 shrink-0">
+                <button
+                    onClick={() => setMainTab('CATALOG')}
+                    className={`px-6 py-2 rounded-lg font-bold transition-colors ${mainTab === 'CATALOG' ? 'bg-pier-neon text-black' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+                >
+                    Catálogo de Vendas
+                </button>
+                <button
+                    onClick={() => setMainTab('FINANCE')}
+                    className={`px-6 py-2 rounded-lg font-bold transition-colors ${mainTab === 'FINANCE' ? 'bg-pier-neon text-black' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+                >
+                    Financeiro Atacado
+                </button>
+            </div>
+
+            {mainTab === 'CATALOG' ? (
+                <div className="flex flex-col md:flex-row h-full gap-4 min-h-0 flex-1">
+                    <div className="flex-1 flex flex-col min-h-0 bg-slate-900 rounded-2xl border border-white/10 overflow-hidden">
+                        <div className="p-4 border-b border-white/10 shrink-0 flex justify-between items-start">
+                            <div>
+                                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                                    <Package className="text-pier-neon" /> Catálogo Atacado
+                                </h2>
+                                <p className="text-sm text-slate-400 mt-1">Defina margens e preços de atacado para seus produtos de forma independente do PDV</p>
+                            </div>
+                            <button 
                         onClick={() => setIsProductModalOpen(true)}
                         className="bg-pier-neon/20 hover:bg-pier-neon text-pier-neon hover:text-black px-4 py-2 rounded-xl transition-colors font-bold flex items-center gap-2 border border-pier-neon/30 hover:border-pier-neon"
                     >
@@ -549,16 +660,15 @@ export const Wholesale = () => {
                                         placeholder="Ponto de Referência"
                                         value={customerReference}
                                         onChange={(e) => setCustomerReference(e.target.value)}
-                                        className="flex-1 bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-pier-neon outline-none"
+                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-pier-neon outline-none"
                                     />
-                                    <button 
-                                        onClick={handleCreateCustomer}
-                                        className="bg-pier-neon/20 hover:bg-pier-neon text-pier-neon hover:text-black px-3 rounded-lg border border-pier-neon/30 hover:border-pier-neon transition-colors flex items-center justify-center"
-                                        title="Cadastrar Novo Cliente"
-                                    >
-                                        <PlusCircle size={20} />
-                                    </button>
                                 </div>
+                                <button 
+                                    onClick={handleCreateCustomer}
+                                    className="w-full mt-2 bg-blue-500/20 hover:bg-blue-500 text-blue-400 hover:text-white py-2 rounded-lg border border-blue-500/30 transition-colors flex items-center justify-center font-bold text-sm"
+                                >
+                                    SALVAR CLIENTE
+                                </button>
                             </div>
                         )}
                         {selectedCustomer && (
@@ -582,16 +692,136 @@ export const Wholesale = () => {
                         )}
                     </div>
 
-                    <button 
-                        onClick={handleSendQuote}
-                        disabled={quoteItems.length === 0}
-                        className="w-full mt-4 py-3 bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:hover:bg-green-500 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
-                    >
-                        <Send size={18} />
-                        Enviar Orçamento
-                    </button>
+                    <div className="flex gap-2 mt-4">
+                        <button 
+                            onClick={handleRegisterSale}
+                            disabled={quoteItems.length === 0}
+                            className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:hover:bg-blue-500 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                        >
+                            <ShoppingCart size={18} />
+                            Registrar Venda
+                        </button>
+                        <button 
+                            onClick={handleSendQuote}
+                            disabled={quoteItems.length === 0}
+                            className="flex-1 py-3 bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:hover:bg-green-500 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                        >
+                            <Send size={18} />
+                            Enviar Orçamento
+                        </button>
+                    </div>
                 </div>
             </div>
+            </div>
+            ) : (
+                <div className="flex flex-col h-full gap-4 min-h-0 flex-1">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
+                        <div className="bg-slate-900 border border-white/10 p-6 rounded-2xl flex flex-col items-center justify-center">
+                            <span className="text-slate-400 text-sm font-bold uppercase mb-1">Vendas no Mês</span>
+                            <span className="text-3xl font-bold text-white">
+                                R$ {wholesaleSales?.filter(s => s.date.getMonth() === new Date().getMonth() && s.date.getFullYear() === new Date().getFullYear()).reduce((acc, s) => acc + s.total, 0).toFixed(2) || '0.00'}
+                            </span>
+                        </div>
+                        <div className="bg-slate-900 border border-white/10 p-6 rounded-2xl flex flex-col items-center justify-center">
+                            <span className="text-slate-400 text-sm font-bold uppercase mb-1">Recebido no Mês</span>
+                            <span className="text-3xl font-bold text-green-400">
+                                R$ {wholesaleSales?.filter(s => s.status === 'PAID' && s.paymentDate?.getMonth() === new Date().getMonth() && s.paymentDate?.getFullYear() === new Date().getFullYear()).reduce((acc, s) => acc + s.total, 0).toFixed(2) || '0.00'}
+                            </span>
+                        </div>
+                        <div className="bg-slate-900 border border-white/10 p-6 rounded-2xl flex flex-col items-center justify-center">
+                            <span className="text-slate-400 text-sm font-bold uppercase mb-1">A Receber</span>
+                            <span className="text-3xl font-bold text-yellow-400">
+                                R$ {wholesaleSales?.filter(s => s.status === 'PENDING').reduce((acc, s) => acc + s.total, 0).toFixed(2) || '0.00'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 bg-slate-900 rounded-2xl border border-white/10 overflow-y-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-white/10 bg-black/20">
+                                    <th className="p-4 text-slate-400 font-medium text-sm">Data</th>
+                                    <th className="p-4 text-slate-400 font-medium text-sm">Cliente</th>
+                                    <th className="p-4 text-slate-400 font-medium text-sm">Vencimento</th>
+                                    <th className="p-4 text-slate-400 font-medium text-sm text-right">Valor</th>
+                                    <th className="p-4 text-slate-400 font-medium text-sm text-center">Status</th>
+                                    <th className="p-4 text-slate-400 font-medium text-sm text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {wholesaleSales?.sort((a, b) => b.date.getTime() - a.date.getTime()).map(sale => {
+                                    const isOverdue = sale.status === 'PENDING' && new Date() > sale.dueDate;
+                                    return (
+                                        <tr key={sale.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                            <td className="p-4 text-white">{sale.date.toLocaleDateString('pt-BR')}</td>
+                                            <td className="p-4">
+                                                <div className="text-white font-medium">{sale.customerName}</div>
+                                                <div className="text-xs text-slate-400">{sale.customerPhone}</div>
+                                            </td>
+                                            <td className="p-4">
+                                                <span className={`${isOverdue ? 'text-red-400 font-bold' : 'text-slate-300'}`}>
+                                                    {sale.dueDate.toLocaleDateString('pt-BR')}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-right text-white font-mono">
+                                                R$ {sale.total.toFixed(2)}
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                {sale.status === 'PAID' ? (
+                                                    <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-green-500/30">PAGO</span>
+                                                ) : isOverdue ? (
+                                                    <span className="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-xs font-bold border border-red-500/30">VENCIDO</span>
+                                                ) : (
+                                                    <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-xs font-bold border border-yellow-500/30">PENDENTE</span>
+                                                )}
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex justify-center gap-2">
+                                                    {sale.status === 'PENDING' && (
+                                                        <>
+                                                            <button 
+                                                                onClick={() => handleSendCharge(sale)}
+                                                                title="Cobrar via WhatsApp"
+                                                                className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500 hover:text-white transition-colors border border-green-500/30"
+                                                            >
+                                                                <Send size={16} />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleMarkAsPaid(sale)}
+                                                                title="Marcar como Pago"
+                                                                className="p-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white transition-colors border border-blue-500/30"
+                                                            >
+                                                                <DollarSign size={16} />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    <button 
+                                                        onClick={() => {
+                                                            if(window.confirm('Excluir esta venda?')) {
+                                                                useApp().removeWholesaleSale?.(sale.id);
+                                                            }
+                                                        }}
+                                                        className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-colors border border-red-500/30"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                                {(!wholesaleSales || wholesaleSales.length === 0) && (
+                                    <tr>
+                                        <td colSpan={6} className="p-8 text-center text-slate-500">
+                                            Nenhuma venda registrada no atacado.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
 
             {/* Product Modal */}
             {isProductModalOpen && (

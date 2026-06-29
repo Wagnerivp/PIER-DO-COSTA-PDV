@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, PropsWithChildren } from 'react';
-import { User, Product, Table, Order, CommissionLog, OrderItem, Expense, DeletedItemLog, Customer, Purchase } from '../types';
+import { User, Product, Table, Order, CommissionLog, OrderItem, Expense, DeletedItemLog, Customer, Purchase, WholesaleSale } from '../types';
 import { INITIAL_USERS, INITIAL_PRODUCTS, INITIAL_TABLES } from '../constants';
 import { supabase } from './supabase';
 
@@ -15,6 +15,7 @@ interface AppContextData {
   customers: Customer[];
   commissionLogs: CommissionLog[];
   expenses: Expense[];
+  wholesaleSales: WholesaleSale[];
   isRegisterOpen: boolean;
   registerBalance: number;
   purchases: Purchase[];
@@ -23,6 +24,10 @@ interface AppContextData {
   addPurchase: (purchase: Purchase) => void;
   updatePurchase: (purchase: Purchase) => void;
   removePurchase: (purchaseId: string) => void;
+  
+  addWholesaleSale: (sale: WholesaleSale) => void;
+  updateWholesaleSale: (sale: WholesaleSale) => void;
+  removeWholesaleSale: (saleId: string) => void;
   
   openRegister: (amount: number) => void;
   closeRegister: () => void;
@@ -79,6 +84,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [commissionLogs, setCommissionLogs] = useState<CommissionLog[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [wholesaleSales, setWholesaleSales] = useState<WholesaleSale[]>([]);
 
   const lastCloudStateRef = useRef<string | null>(null);
   const lastLocalStateRef = useRef<string | null>(null);
@@ -113,6 +119,15 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       if (parsed.expenses) {
           const mappedExpenses = parsed.expenses.map((e: any) => ({...e, date: new Date(e.date)}));
           setExpenses(prev => JSON.stringify(prev) === JSON.stringify(mappedExpenses) ? prev : mappedExpenses);
+      }
+      if (parsed.wholesaleSales) {
+          const mappedWholesaleSales = parsed.wholesaleSales.map((s: any) => ({
+              ...s, 
+              date: new Date(s.date), 
+              dueDate: new Date(s.dueDate),
+              paymentDate: s.paymentDate ? new Date(s.paymentDate) : undefined
+          }));
+          setWholesaleSales(prev => JSON.stringify(prev) === JSON.stringify(mappedWholesaleSales) ? prev : mappedWholesaleSales);
       }
       if (parsed.purchases) {
           const mappedPurchases = parsed.purchases.map((p: any) => ({...p, date: new Date(p.date), paymentDate: new Date(p.paymentDate)}));
@@ -157,6 +172,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
               commissionLogs: parsed.commissionLogs,
               expenses: parsed.expenses,
               purchases: parsed.purchases,
+              wholesaleSales: parsed.wholesaleSales,
           };
           lastCloudStateRef.current = JSON.stringify(stripped);
       }
@@ -245,7 +261,8 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       customers,
       commissionLogs,
       expenses,
-      purchases
+      purchases,
+      wholesaleSales
     };
     
     const cloudSignature = JSON.stringify(stripped);
@@ -714,6 +731,18 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     setCommissionLogs(prev => [...prev, log]);
   };
 
+  const addWholesaleSale = (sale: WholesaleSale) => {
+    setWholesaleSales(prev => [...prev, sale]);
+  };
+
+  const updateWholesaleSale = (sale: WholesaleSale) => {
+    setWholesaleSales(prev => prev.map(s => s.id === sale.id ? sale : s));
+  };
+
+  const removeWholesaleSale = (saleId: string) => {
+    setWholesaleSales(prev => prev.filter(s => s.id !== saleId));
+  };
+
   const processDirectSale = (items: {product: Product, quantity: number, total: number}[], paymentMethod: string) => {
     const subtotal = items.reduce((acc, item) => acc + item.total, 0);
     const orderItems: OrderItem[] = items.map(i => ({
@@ -816,9 +845,10 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
   return (
     <AppContext.Provider value={{
-      currentUser, login, directLogin, logout, users, products, tables, orders, customers, commissionLogs, expenses, purchases, isRegisterOpen, registerBalance,
+      currentUser, login, directLogin, logout, users, products, tables, orders, customers, commissionLogs, expenses, purchases, wholesaleSales, isRegisterOpen, registerBalance,
       openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payPartialAccount, payCommission, updateCommission, deleteCommission, addAdvance, addConsumption, processDirectSale, deleteOrder,
-      addUser, updateUser, removeUser, addExpense, updateExpense, removeExpense, addPurchase, updatePurchase, removePurchase, addCustomer, updateCustomer, removeCustomer, resetSystem, resetWaiterCommissions
+      addUser, updateUser, removeUser, addExpense, updateExpense, removeExpense, addPurchase, updatePurchase, removePurchase, addCustomer, updateCustomer, removeCustomer, resetSystem, resetWaiterCommissions,
+      addWholesaleSale, updateWholesaleSale, removeWholesaleSale
     }}>
       {children}
     </AppContext.Provider>

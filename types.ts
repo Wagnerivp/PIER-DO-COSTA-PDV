@@ -115,3 +115,16 @@ export interface Expense {
   category: ExpenseCategory;
   date: Date;
 }
+
+export interface WholesaleSale {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  items: OrderItem[]; // Reusing OrderItem for simplicity
+  total: number;
+  date: Date;
+  dueDate: Date;
+  status: 'PENDING' | 'PAID';
+  paymentDate?: Date;
+}

@@ -11,16 +11,25 @@ export const Customers = () => {
 
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
+    const [street, setStreet] = useState('');
+    const [neighborhood, setNeighborhood] = useState('');
+    const [reference, setReference] = useState('');
 
     const openModal = (customer?: Customer) => {
         if (customer) {
             setEditingCustomer(customer);
             setName(customer.name);
             setPhone(customer.phone);
+            setStreet(customer.street || '');
+            setNeighborhood(customer.neighborhood || '');
+            setReference(customer.reference || '');
         } else {
             setEditingCustomer(null);
             setName('');
             setPhone('');
+            setStreet('');
+            setNeighborhood('');
+            setReference('');
         }
         setIsModalOpen(true);
     };
@@ -37,13 +46,19 @@ export const Customers = () => {
             updateCustomer({
                 ...editingCustomer,
                 name: name.trim(),
-                phone: phone.trim()
+                phone: phone.trim(),
+                street: street.trim(),
+                neighborhood: neighborhood.trim(),
+                reference: reference.trim()
             });
         } else {
             addCustomer({
                 id: Date.now().toString(),
                 name: name.trim(),
-                phone: phone.trim()
+                phone: phone.trim(),
+                street: street.trim(),
+                neighborhood: neighborhood.trim(),
+                reference: reference.trim()
             });
         }
         setIsModalOpen(false);
@@ -185,6 +200,40 @@ export const Customers = () => {
                                         placeholder="Ex: 11999998888"
                                     />
                                 </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-1">Rua/Av</label>
+                                    <input 
+                                        type="text" 
+                                        value={street}
+                                        onChange={e => setStreet(e.target.value)}
+                                        className="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-pier-neon focus:bg-slate-800 transition-all"
+                                        placeholder="Ex: Av. Atlântica, 100"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-1">Bairro</label>
+                                    <input 
+                                        type="text" 
+                                        value={neighborhood}
+                                        onChange={e => setNeighborhood(e.target.value)}
+                                        className="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-pier-neon focus:bg-slate-800 transition-all"
+                                        placeholder="Ex: Copacabana"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-1">Ponto de Referência</label>
+                                <input 
+                                    type="text" 
+                                    value={reference}
+                                    onChange={e => setReference(e.target.value)}
+                                    className="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-pier-neon focus:bg-slate-800 transition-all"
+                                    placeholder="Ex: Próximo ao mercado"
+                                />
                             </div>
 
                             <button 
