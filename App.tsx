@@ -12,6 +12,7 @@ import { Products } from './pages/Products';
 import { Finance } from './pages/Finance';
 import { Team } from './pages/Team';
 import { Customers } from './pages/Customers';
+import { Wholesale } from './pages/Wholesale';
 import { CashierAlertListener } from './components/CashierAlertListener';
 
 import { Purchases } from './pages/Purchases';
@@ -38,6 +39,7 @@ const AppRoutes = () => {
           <Route path="/team" element={<Team />} />
           <Route path="/commissions" element={<WaiterPanel />} />
           <Route path="/customers" element={<Customers />} />
+          <Route path="/wholesale" element={<Wholesale />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

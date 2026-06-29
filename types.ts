@@ -25,6 +25,9 @@ export interface Product {
   description?: string;
   lastStockUpdate?: Date;
   salesResetAt?: Date;
+  wholesalePrice?: number;
+  wholesaleMargin?: number;
+  wholesaleBoxSize?: number;
 }
 
 export interface Customer {

@@ -1,7 +1,7 @@
 import React, { PropsWithChildren } from 'react';
 import { useApp } from '../services/AppContext';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Armchair, Coffee, Users, LogOut, Settings, DollarSign, Zap, Wallet, TrendingUp, ShoppingCart } from 'lucide-react';
+import { LayoutDashboard, Armchair, Coffee, Users, LogOut, Settings, DollarSign, Zap, Wallet, TrendingUp, ShoppingCart, Package } from 'lucide-react';
 
 export const Layout = ({ children }: PropsWithChildren) => {
   const { currentUser, logout } = useApp();
@@ -70,6 +70,13 @@ export const Layout = ({ children }: PropsWithChildren) => {
             <Link to="/customers" className={`px-4 lg:px-6 py-4 flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-1 lg:gap-4 transition-all min-w-[70px] snap-center ${isActive('/customers')}`}>
               <Users size={22} className="w-[20px] h-[20px] lg:w-[22px] lg:h-[22px]" />
               <span className="text-[10px] lg:text-base font-medium">Clientes</span>
+            </Link>
+          )}
+
+          {(currentUser?.role === 'MANAGER' || currentUser?.role === 'ADMIN') && (
+            <Link to="/wholesale" className={`px-4 lg:px-6 py-4 flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-1 lg:gap-4 transition-all min-w-[70px] snap-center ${isActive('/wholesale')}`}>
+              <Package size={22} className="w-[20px] h-[20px] lg:w-[22px] lg:h-[22px]" />
+              <span className="text-[10px] lg:text-base font-medium">Atacado</span>
             </Link>
           )}
 
