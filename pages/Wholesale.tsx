@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { useApp } from '../services/AppContext';
 import { CATEGORIES } from '../constants';
-import { ShoppingCart, Plus, Minus, Trash2, Send, Percent, DollarSign, Package, Users, PlusCircle, X, Box, Search } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, Send, Percent, DollarSign, Package, Users, PlusCircle, X, Box, Search, Maximize2, Minimize2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { EditableNumber } from '../components/EditableNumber';
 
 export const Wholesale = () => {
-    const { products, updateProduct, customers, addCustomer, wholesaleSales, updateWholesaleSale } = useApp();
+    const { products, updateProduct, customers, addCustomer, wholesaleSales, updateWholesaleSale, addWholesaleSale, removeWholesaleSale } = useApp();
     const [activeTab, setActiveTab] = useState(CATEGORIES[0]?.id);
     const [quoteItems, setQuoteItems] = useState<{ id: string; productId: string; type: 'UNIT' | 'BOX'; quantity: number; price: number; boxSize: number }[]>([]);
+    const [isQuoteFullScreen, setIsQuoteFullScreen] = useState(false);
     
     // Product Search in Quote
     const [productSearchTerm, setProductSearchTerm] = useState('');
@@ -274,7 +275,7 @@ export const Wholesale = () => {
             status: 'PENDING' as const
         };
 
-        useApp().addWholesaleSale?.(newSale); // Use optional chaining to avoid type errors if not fully updated
+        addWholesaleSale(newSale);
         setQuoteItems([]);
         alert('Venda registrada com sucesso! Prazo de 7 dias adicionado.');
         setMainTab('FINANCE');
@@ -477,11 +478,21 @@ export const Wholesale = () => {
             </div>
 
             {/* Quote Sidebar */}
-            <div className="w-full md:w-[450px] flex flex-col bg-slate-900 rounded-2xl border border-white/10 overflow-hidden shrink-0">
+            <div className={isQuoteFullScreen 
+                ? "fixed inset-0 z-50 bg-slate-900 flex flex-col" 
+                : "w-full md:w-[450px] flex flex-col bg-slate-900 rounded-2xl border border-white/10 overflow-hidden shrink-0"}>
                 <div className="p-4 border-b border-white/10 bg-black/20 flex flex-col gap-4 shrink-0">
-                    <div className="flex items-center gap-2">
-                        <ShoppingCart className="text-white" />
-                        <h2 className="text-xl font-bold text-white">Orçamento</h2>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <ShoppingCart className="text-white" />
+                            <h2 className="text-xl font-bold text-white">Orçamento</h2>
+                        </div>
+                        <button 
+                            onClick={() => setIsQuoteFullScreen(!isQuoteFullScreen)}
+                            className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                        >
+                            {isQuoteFullScreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                        </button>
                     </div>
                     
                     {/* Product Search */}
@@ -804,7 +815,7 @@ export const Wholesale = () => {
                                                     <button 
                                                         onClick={() => {
                                                             if(window.confirm('Excluir esta venda?')) {
-                                                                useApp().removeWholesaleSale?.(sale.id);
+                                                                removeWholesaleSale(sale.id);
                                                             }
                                                         }}
                                                         className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-colors border border-red-500/30"
