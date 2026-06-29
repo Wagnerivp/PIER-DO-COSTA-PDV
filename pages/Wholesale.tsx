@@ -148,6 +148,17 @@ export const Wholesale = () => {
         }));
     };
 
+    const handleSetQuoteQuantity = (id: string, qtyText: string) => {
+        const qty = parseInt(qtyText, 10);
+        if (isNaN(qty) || qty < 1) return;
+        setQuoteItems(quoteItems.map(i => {
+            if (i.id === id) {
+                return { ...i, quantity: qty };
+            }
+            return i;
+        }));
+    };
+
     const handleRemoveFromQuote = (id: string) => {
         setQuoteItems(quoteItems.filter(i => i.id !== id));
     };
@@ -202,7 +213,7 @@ export const Wholesale = () => {
         
         const cleanPhone = phoneToSend.replace(/\D/g, '');
         if (cleanPhone) {
-            msg += `Link WhatsApp do Cliente: https://wa.me/55${cleanPhone}\n\n`;
+            msg += `WhatsApp do ${nameToSend || 'Cliente'}: https://wa.me/55${cleanPhone}\n\n`;
         }
         msg += `Válido por 7 dias.`;
 
@@ -349,7 +360,7 @@ export const Wholesale = () => {
             </div>
 
             {/* Quote Sidebar */}
-            <div className="w-full md:w-96 flex flex-col bg-slate-900 rounded-2xl border border-white/10 overflow-hidden shrink-0">
+            <div className="w-full md:w-[450px] flex flex-col bg-slate-900 rounded-2xl border border-white/10 overflow-hidden shrink-0">
                 <div className="p-4 border-b border-white/10 bg-black/20 flex flex-col gap-4 shrink-0">
                     <div className="flex items-center gap-2">
                         <ShoppingCart className="text-white" />
@@ -445,7 +456,11 @@ export const Wholesale = () => {
                                                 >
                                                     <Minus size={14} />
                                                 </button>
-                                                <span className="font-bold text-white font-mono w-6 text-center">{item.quantity}</span>
+                                                <EditableNumber 
+                                                    value={item.quantity}
+                                                    onChange={(val) => handleSetQuoteQuantity(item.id, val)}
+                                                    className="font-bold text-white font-mono w-14 text-center bg-black/20 border border-white/10 focus:border-pier-neon rounded px-1 py-1 outline-none"
+                                                />
                                                 <button 
                                                     onClick={() => handleUpdateQuoteQuantity(item.id, 1)}
                                                     className="w-8 h-8 rounded-lg bg-black/50 hover:bg-black border border-white/10 flex items-center justify-center text-white transition-colors"
