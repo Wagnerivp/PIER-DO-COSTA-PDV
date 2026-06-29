@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../services/AppContext';
 import { Table, User } from '../types';
-import { Users, AlertCircle, Edit2, Trash2 } from 'lucide-react';
+import { Users, AlertCircle, Edit2, Trash2, Plus } from 'lucide-react';
 import { OrderView } from './OrderView';
 
 export const Tables = () => {
-  const { tables, users, orders, openTable, updateTableName, cancelOrder, isRegisterOpen, currentUser, customers } = useApp();
+  const { tables, users, orders, openTable, updateTableName, cancelOrder, isRegisterOpen, currentUser, customers, addTable } = useApp();
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tableToReset, setTableToReset] = useState<string | null>(null);
@@ -16,6 +16,25 @@ export const Tables = () => {
   const [showCustomersDropdown, setShowCustomersDropdown] = useState(false);
 
   const waiters = users.filter(u => u.role === 'WAITER');
+
+  const handleAddTable = () => {
+      // Find the highest table number among those starting with 't'
+      const regularTables = tables.filter(t => t.id.startsWith('t'));
+      let nextNumber = 1;
+      
+      if (regularTables.length > 0) {
+          const maxNumber = Math.max(...regularTables.map(t => t.number));
+          nextNumber = maxNumber + 1;
+      }
+      
+      const newTable: Table = {
+          id: `t${nextNumber}`,
+          number: nextNumber,
+          status: 'AVAILABLE'
+      };
+      
+      addTable(newTable);
+  };
 
   const handleTableClick = (table: Table) => {
     if (table.status === 'AVAILABLE') {
@@ -92,12 +111,20 @@ export const Tables = () => {
             <p className="text-slate-400">Mapa de mesas em tempo real</p>
         </div>
         
-        <div className="flex flex-wrap gap-4">
-            <div className="flex items-center gap-2 text-sm text-slate-300">
-                <span className="w-3 h-3 rounded-full bg-slate-600"></span> Livre
-            </div>
-            <div className="flex items-center gap-2 text-sm text-slate-300">
-                <span className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]"></span> Ocupada
+        <div className="flex flex-col md:flex-row items-end md:items-center gap-4">
+            <button 
+                onClick={handleAddTable}
+                className="flex items-center gap-2 bg-pier-neon/20 hover:bg-pier-neon text-pier-neon hover:text-black px-4 py-2 rounded-lg font-bold transition-colors border border-pier-neon/30 hover:border-pier-neon text-sm"
+            >
+                <Plus size={16} /> Adicionar Mesa
+            </button>
+            <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2 text-sm text-slate-300">
+                    <span className="w-3 h-3 rounded-full bg-slate-600"></span> Livre
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-300">
+                    <span className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]"></span> Ocupada
+                </div>
             </div>
         </div>
       </div>

@@ -34,6 +34,8 @@ interface AppContextData {
   addProduct: (product: Product) => void;
   updateProduct: (product: Product) => void;
   removeProduct: (productId: string) => void;
+  // Table Actions
+  addTable: (table: Table) => void;
   openTable: (tableId: string, waiterId: string, clientName?: string) => void;
   cancelOrder: (tableId: string) => void; // Reset Table
   updateTableName: (tableId: string, newName: string) => void;
@@ -382,6 +384,10 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
   const removeProduct = (productId: string) => {
     setProducts(prev => prev.filter(p => p.id !== productId));
+  };
+
+  const addTable = (table: Table) => {
+      setTables(prev => [...prev, table]);
   };
 
   const openTable = (tableId: string, waiterId: string, clientName?: string) => {
@@ -846,7 +852,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   return (
     <AppContext.Provider value={{
       currentUser, login, directLogin, logout, users, products, tables, orders, customers, commissionLogs, expenses, purchases, wholesaleSales, isRegisterOpen, registerBalance,
-      openRegister, closeRegister, addProduct, updateProduct, removeProduct, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payPartialAccount, payCommission, updateCommission, deleteCommission, addAdvance, addConsumption, processDirectSale, deleteOrder,
+      openRegister, closeRegister, addProduct, updateProduct, removeProduct, addTable, openTable, cancelOrder, updateTableName, requestCheckout, addToOrder, removeFromOrder, closeAccount, payPartialAccount, payCommission, updateCommission, deleteCommission, addAdvance, addConsumption, processDirectSale, deleteOrder,
       addUser, updateUser, removeUser, addExpense, updateExpense, removeExpense, addPurchase, updatePurchase, removePurchase, addCustomer, updateCustomer, removeCustomer, resetSystem, resetWaiterCommissions,
       addWholesaleSale, updateWholesaleSale, removeWholesaleSale
     }}>
