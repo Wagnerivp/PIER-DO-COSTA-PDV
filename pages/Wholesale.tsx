@@ -8,7 +8,7 @@ import { EditableNumber } from '../components/EditableNumber';
 export const Wholesale = () => {
     const { products, updateProduct, customers, addCustomer } = useApp();
     const [activeTab, setActiveTab] = useState(CATEGORIES[0]?.id);
-    const [quoteItems, setQuoteItems] = useState<{ productId: string; quantity: number; price: number }[]>([]);
+    const [quoteItems, setQuoteItems] = useState<{ id: string; productId: string; type: 'UNIT' | 'BOX'; quantity: number; price: number; boxSize: number }[]>([]);
     
     // Customer Selection
     const [searchTerm, setSearchTerm] = useState('');
@@ -98,27 +98,28 @@ export const Wholesale = () => {
     const handleAddToQuote = (product: any, type: 'UNIT' | 'BOX') => {
         const currentPrice = product.wholesalePrice || product.price;
         const boxSize = product.wholesaleBoxSize || 1;
-        const qtyToAdd = type === 'BOX' ? boxSize : 1;
+        const itemPrice = type === 'BOX' ? currentPrice * boxSize : currentPrice;
+        const itemId = `${product.id}-${type}`;
         
-        const existing = quoteItems.find(i => i.productId === product.id);
+        const existing = quoteItems.find(i => i.id === itemId);
         if (existing) {
-            setQuoteItems(quoteItems.map(i => i.productId === product.id ? { ...i, quantity: i.quantity + qtyToAdd, price: currentPrice } : i));
+            setQuoteItems(quoteItems.map(i => i.id === itemId ? { ...i, quantity: i.quantity + 1, price: itemPrice, boxSize } : i));
         } else {
-            setQuoteItems([...quoteItems, { productId: product.id, quantity: qtyToAdd, price: currentPrice }]);
+            setQuoteItems([...quoteItems, { id: itemId, productId: product.id, type, quantity: 1, price: itemPrice, boxSize }]);
         }
     };
 
-    const handleUpdateQuoteQuantity = (productId: string, delta: number) => {
+    const handleUpdateQuoteQuantity = (id: string, delta: number) => {
         setQuoteItems(quoteItems.map(i => {
-            if (i.productId === productId) {
+            if (i.id === id) {
                 return { ...i, quantity: Math.max(1, i.quantity + delta) };
             }
             return i;
         }));
     };
 
-    const handleRemoveFromQuote = (productId: string) => {
-        setQuoteItems(quoteItems.filter(i => i.productId !== productId));
+    const handleRemoveFromQuote = (id: string) => {
+        setQuoteItems(quoteItems.filter(i => i.id !== id));
     };
 
     const quoteTotal = quoteItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
@@ -154,7 +155,8 @@ export const Wholesale = () => {
         quoteItems.forEach(item => {
             const product = products.find(p => p.id === item.productId);
             if (product) {
-                msg += `${item.quantity}x ${product.name} - R$ ${(item.price * item.quantity).toFixed(2)}\n`;
+                const typeText = item.type === 'BOX' ? `Cx (${item.boxSize} un)` : 'Un';
+                msg += `${item.quantity}x ${product.name} - ${typeText} - R$ ${(item.price * item.quantity).toFixed(2)}\n`;
             }
         });
         msg += `------------------------\n`;
@@ -207,7 +209,7 @@ export const Wholesale = () => {
                         const profitUn = (parseFloat(priceUn) - product.cost).toFixed(2);
 
                         return (
-                            <div key={product.id} className="flex flex-col xl:flex-row items-start xl:items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-white/5 gap-4 hover:border-white/10 transition-colors">
+                            <div key={product.id} className="flex flex-col p-4 bg-slate-800/50 rounded-xl border border-white/5 gap-4 hover:border-white/10 transition-colors">
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-bold text-white text-lg truncate">{product.name}</h3>
                                     <div className="flex items-center gap-4 text-xs mt-1">
@@ -217,61 +219,64 @@ export const Wholesale = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-3 w-full xl:w-auto mt-2 xl:mt-0 justify-end flex-wrap">
-                                    <div className="flex flex-col gap-1 w-16">
-                                        <label className="text-[10px] text-slate-400 uppercase font-bold text-center">Un/Cx</label>
-                                        <EditableNumber 
-                                            value={boxSize}
-                                            onChange={(val) => handleUpdateBoxSize(product, val)}
-                                            className="bg-black/50 border border-white/10 rounded-lg px-2 py-1.5 text-white font-mono text-sm focus:border-pier-neon outline-none text-center"
-                                        />
-                                    </div>
-                                    <div className="flex flex-col gap-1 w-20">
-                                        <label className="text-[10px] text-slate-400 uppercase font-bold">Margem(%)</label>
-                                        <EditableNumber 
-                                            value={margin}
-                                            onChange={(val) => handleUpdateMargin(product, val)}
-                                            className="bg-black/50 border border-white/10 rounded-lg px-2 py-1.5 text-white font-mono text-sm focus:border-pier-neon outline-none"
-                                            step="0.1"
-                                        />
-                                    </div>
-                                    <div className="flex flex-col gap-1 w-24">
-                                        <label className="text-[10px] text-slate-400 uppercase font-bold">Preço Un(R$)</label>
-                                        <EditableNumber 
-                                            value={priceUn}
-                                            onChange={(val) => handleUpdatePrice(product, val)}
-                                            className="bg-black/50 border border-white/10 rounded-lg px-2 py-1.5 text-pier-neon font-mono text-sm font-bold focus:border-pier-neon outline-none"
-                                            step="0.1"
-                                        />
-                                    </div>
-                                    <div className="flex flex-col gap-1 w-24">
-                                        <label className="text-[10px] text-slate-400 uppercase font-bold">Preço Cx(R$)</label>
-                                        <EditableNumber 
-                                            value={priceCx}
-                                            onChange={(val) => handleUpdateBoxPrice(product, val)}
-                                            className="bg-black/50 border border-white/10 rounded-lg px-2 py-1.5 text-green-400 font-mono text-sm font-bold focus:border-green-400 outline-none"
-                                            step="0.1"
-                                        />
-                                    </div>
-                                    
-                                    <div className="flex flex-col gap-1 mt-4 xl:mt-0">
-                                        <label className="text-[10px] text-slate-400 uppercase font-bold invisible hidden xl:block">Add</label>
-                                        <div className="flex bg-pier-neon/10 rounded-lg overflow-hidden border border-pier-neon/30 h-[34px]">
-                                            <button 
-                                                onClick={() => handleAddToQuote(product, 'UNIT')}
-                                                className="hover:bg-pier-neon text-pier-neon hover:text-black px-3 transition-colors text-xs font-bold border-r border-pier-neon/30 flex items-center justify-center whitespace-nowrap"
-                                                title="Adicionar 1 Unidade"
-                                            >
-                                                +1 Un
-                                            </button>
-                                            <button 
-                                                onClick={() => handleAddToQuote(product, 'BOX')}
-                                                className="hover:bg-pier-neon text-pier-neon hover:text-black px-3 transition-colors text-xs font-bold flex items-center justify-center whitespace-nowrap"
-                                                title="Adicionar 1 Caixa"
-                                            >
-                                                +1 Cx
-                                            </button>
+                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                    {/* Unidade configs */}
+                                    <div className="bg-black/30 p-3 rounded-lg border border-white/5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
+                                        <div className="flex gap-3">
+                                            <div className="flex flex-col gap-1 w-20">
+                                                <label className="text-[10px] text-slate-400 uppercase font-bold text-center">Margem(%)</label>
+                                                <EditableNumber 
+                                                    value={margin}
+                                                    onChange={(val) => handleUpdateMargin(product, val)}
+                                                    className="bg-slate-800 border border-white/10 rounded-lg px-2 py-2 text-white font-mono text-sm focus:border-pier-neon outline-none text-center"
+                                                    step="0.1"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-1 w-28">
+                                                <label className="text-[10px] text-slate-400 uppercase font-bold text-center">Preço Un(R$)</label>
+                                                <EditableNumber 
+                                                    value={priceUn}
+                                                    onChange={(val) => handleUpdatePrice(product, val)}
+                                                    className="bg-slate-800 border border-white/10 rounded-lg px-2 py-2 text-pier-neon font-mono text-sm font-bold focus:border-pier-neon outline-none text-center"
+                                                    step="0.1"
+                                                />
+                                            </div>
                                         </div>
+                                        <button 
+                                            onClick={() => handleAddToQuote(product, 'UNIT')}
+                                            className="w-full sm:w-auto hover:bg-pier-neon bg-pier-neon/10 text-pier-neon hover:text-black px-4 py-2 rounded-lg transition-colors text-sm font-bold border border-pier-neon/30 whitespace-nowrap h-[38px] flex items-center justify-center mt-4 sm:mt-0"
+                                        >
+                                            +1 Unidade
+                                        </button>
+                                    </div>
+
+                                    {/* Caixa configs */}
+                                    <div className="bg-black/30 p-3 rounded-lg border border-white/5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
+                                        <div className="flex gap-3">
+                                            <div className="flex flex-col gap-1 w-20">
+                                                <label className="text-[10px] text-slate-400 uppercase font-bold text-center">Un/Caixa</label>
+                                                <EditableNumber 
+                                                    value={boxSize}
+                                                    onChange={(val) => handleUpdateBoxSize(product, val)}
+                                                    className="bg-slate-800 border border-white/10 rounded-lg px-2 py-2 text-white font-mono text-sm focus:border-green-400 outline-none text-center"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-1 w-28">
+                                                <label className="text-[10px] text-slate-400 uppercase font-bold text-center">Preço Cx(R$)</label>
+                                                <EditableNumber 
+                                                    value={priceCx}
+                                                    onChange={(val) => handleUpdateBoxPrice(product, val)}
+                                                    className="bg-slate-800 border border-white/10 rounded-lg px-2 py-2 text-green-400 font-mono text-sm font-bold focus:border-green-400 outline-none text-center"
+                                                    step="0.1"
+                                                />
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => handleAddToQuote(product, 'BOX')}
+                                            className="w-full sm:w-auto hover:bg-green-400 bg-green-400/10 text-green-400 hover:text-black px-4 py-2 rounded-lg transition-colors text-sm font-bold border border-green-400/30 whitespace-nowrap h-[38px] flex items-center justify-center mt-4 sm:mt-0"
+                                        >
+                                            +1 Caixa
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -304,24 +309,29 @@ export const Wholesale = () => {
                                 const product = products.find(p => p.id === item.productId);
                                 if (!product) return null;
                                 return (
-                                    <div key={item.productId} className="flex flex-col gap-2 p-3 bg-slate-800/50 rounded-xl border border-white/5">
+                                    <div key={item.id} className="flex flex-col gap-2 p-3 bg-slate-800/50 rounded-xl border border-white/5">
                                         <div className="flex justify-between items-start">
-                                            <span className="font-bold text-white text-sm">{product.name}</span>
-                                            <button onClick={() => handleRemoveFromQuote(item.productId)} className="text-slate-500 hover:text-red-400 transition-colors">
+                                            <div>
+                                                <span className="font-bold text-white text-sm block">{product.name}</span>
+                                                <span className="text-xs text-slate-400">
+                                                    {item.type === 'BOX' ? `Caixa c/ ${item.boxSize} un` : 'Unidade'} (R$ {item.price.toFixed(2)})
+                                                </span>
+                                            </div>
+                                            <button onClick={() => handleRemoveFromQuote(item.id)} className="text-slate-500 hover:text-red-400 transition-colors">
                                                 <Trash2 size={16} />
                                             </button>
                                         </div>
                                         <div className="flex justify-between items-center mt-1">
                                             <div className="flex items-center gap-3">
                                                 <button 
-                                                    onClick={() => handleUpdateQuoteQuantity(item.productId, -1)}
+                                                    onClick={() => handleUpdateQuoteQuantity(item.id, -1)}
                                                     className="w-8 h-8 rounded-lg bg-black/50 hover:bg-black border border-white/10 flex items-center justify-center text-white transition-colors"
                                                 >
                                                     <Minus size={14} />
                                                 </button>
                                                 <span className="font-bold text-white font-mono w-6 text-center">{item.quantity}</span>
                                                 <button 
-                                                    onClick={() => handleUpdateQuoteQuantity(item.productId, 1)}
+                                                    onClick={() => handleUpdateQuoteQuantity(item.id, 1)}
                                                     className="w-8 h-8 rounded-lg bg-black/50 hover:bg-black border border-white/10 flex items-center justify-center text-white transition-colors"
                                                 >
                                                     <Plus size={14} />
